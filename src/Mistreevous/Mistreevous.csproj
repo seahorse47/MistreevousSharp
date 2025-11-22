@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;netstandard2.1</TargetFrameworks>
+    <AssemblyName>Mistreevous</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>True</IsPackable>
+    <PackageId>MistreevousSharp</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Description>A lightweight C# behaviour-tree library inspired by Mistreevous: define complex AI behaviors using a minimal DSL or JSON, with composite, decorator, waiter, lotto, and guard nodes, plus async actions, state callbacks and global subtree registration.</Description>
+    <PackageTags>BehaviorTree AI BehaviorTree C# BT DSL Composite Decorator Action Condition Async Guard Random Tree</PackageTags>
+    <Authors>Diego Teles, nikkorn</Authors>
+    <PackageReleaseNotes>A changelog is available at https://github.com/guinhx/MistreevousSharp/blob/main/CHANGELOG.md.</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/guinhx/MistreevousSharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/guinhx/MistreevousSharp</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+  </ItemGroup>
+</Project>
