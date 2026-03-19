@@ -26,10 +26,63 @@ public class BehaviourTree
     /// <summary>
     /// Creates a new instance of the BehaviourTree class.
     /// </summary>
-    /// <param name="definition">The behaviour tree definition as either an MDSL string, root node definition object or array of root node definition objects.</param>
+    /// <param name="definition">The behaviour tree definition as an MDSL string.</param>
     /// <param name="agent">The agent instance that this behaviour tree is modelling behaviour for.</param>
     /// <param name="options">The behaviour tree options object.</param>
-    public BehaviourTree(object definition, IAgent agent, BehaviourTreeOptions? options = null)
+    public BehaviourTree(string definition, IAgent agent, BehaviourTreeOptions? options = null)
+    {
+        // The tree definition must be defined.
+        if (string.IsNullOrEmpty(definition))
+        {
+            throw new Exception("tree definition not defined");
+        }
+
+        // The agent must be defined and not null.
+        if (agent == null)
+        {
+            throw new Exception("the agent must be an object and not null");
+        }
+
+        _agent = agent;
+        _options = options ?? new BehaviourTreeOptions();
+
+        // We should validate the definition before we try to build the tree nodes.
+        var validationResult = ValidateMDSLDefinition(definition);
+
+        ThrowIfValidationFailed(validationResult);
+
+        try
+        {
+            // Create the populated tree of behaviour tree nodes and get the root node.
+            _rootNode = BehaviourTreeBuilder.BuildRootNode(validationResult.Json!, _options);
+        }
+        catch (Exception exception)
+        {
+            // There was an issue in trying build and populate the behaviour tree.
+            throw new Exception($"error building tree: {exception.Message}", exception);
+        }
+    }
+
+    /// <summary>
+    /// Creates a new instance of the BehaviourTree class.
+    /// </summary>
+    /// <param name="definition">The behaviour tree definition object.</param>
+    /// <param name="agent">The agent instance that this behaviour tree is modelling behaviour for.</param>
+    /// <param name="options">The behaviour tree options object.</param>
+    /// <param name="skipValidation">Whether skip validation of the definition object.</param>
+    public BehaviourTree(RootNodeDefinition definition, IAgent agent, BehaviourTreeOptions? options = null, bool skipValidation = false)
+        : this(definition != null ? new List<RootNodeDefinition> { definition } : throw new Exception("tree definition not defined"), agent, options, skipValidation)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance of the BehaviourTree class.
+    /// </summary>
+    /// <param name="definition">The behaviour tree definition as a list of root node definition objects.</param>
+    /// <param name="agent">The agent instance that this behaviour tree is modelling behaviour for.</param>
+    /// <param name="options">The behaviour tree options object.</param>
+    /// <param name="skipValidation">Whether skip validation of the definition objects.</param>
+    public BehaviourTree(List<RootNodeDefinition> definition, IAgent agent, BehaviourTreeOptions? options = null, bool skipValidation = false)
     {
         // The tree definition must be defined.
         if (definition == null)
@@ -46,9 +99,28 @@ public class BehaviourTree
         _agent = agent;
         _options = options ?? new BehaviourTreeOptions();
 
-        // We should validate the definition before we try to build the tree nodes.
-        var validationResult = ValidateDefinition(definition);
+        if (!skipValidation)
+        {
+            // We should validate the definition before we try to build the tree nodes.
+            var validationResult = ValidateJsonDefinitions(definition);
 
+            ThrowIfValidationFailed(validationResult);
+        }
+
+        try
+        {
+            // Create the populated tree of behaviour tree nodes and get the root node.
+            _rootNode = BehaviourTreeBuilder.BuildRootNode(definition, _options);
+        }
+        catch (Exception exception)
+        {
+            // There was an issue in trying build and populate the behaviour tree.
+            throw new Exception($"error building tree: {exception.Message}", exception);
+        }
+    }
+
+    private static void ThrowIfValidationFailed(DefinitionValidationResult validationResult)
+    {
         // Did our validation fail without error?
         if (!validationResult.Succeeded)
         {
@@ -61,17 +133,6 @@ public class BehaviourTree
             throw new Exception(
                 "expected json definition to be returned as part of successful definition validation response"
             );
-        }
-
-        try
-        {
-            // Create the populated tree of behaviour tree nodes and get the root node.
-            _rootNode = BehaviourTreeBuilder.BuildRootNode(validationResult.Json, _options);
-        }
-        catch (Exception exception)
-        {
-            // There was an issue in trying build and populate the behaviour tree.
-            throw new Exception($"error building tree: {exception.Message}", exception);
         }
     }
 
@@ -173,7 +234,7 @@ public class BehaviourTree
             try
             {
                 // We should validate the subtree as we don't want invalid subtrees available via the lookup.
-                var validationResult = ValidateJSONDefinition(rootNodeDefinitions[0]);
+                var validationResult = ValidateJSONDefinitionInternal(rootNodeDefinitions[0]);
 
                 // Did our validation fail without error?
                 if (!validationResult.Succeeded)
@@ -196,7 +257,7 @@ public class BehaviourTree
             try
             {
                 // We should validate the subtree as we don't want invalid subtrees available via the lookup.
-                var validationResult = ValidateJSONDefinition(rootNodeDefinition);
+                var validationResult = ValidateJSONDefinitionInternal(rootNodeDefinition);
 
                 // Did our validation fail without error?
                 if (!validationResult.Succeeded)
@@ -254,38 +315,12 @@ public class BehaviourTree
 
         if (definition is RootNodeDefinition rootNodeDefinition)
         {
-            var result = ValidateJSONDefinition(rootNodeDefinition);
-            return new DefinitionValidationResult
-            {
-                Succeeded = result.Succeeded,
-                ErrorMessage = result.ErrorMessage,
-                Json = result.Succeeded ? new List<RootNodeDefinition> { rootNodeDefinition } : null
-            };
+            return ValidateJSONDefinition(rootNodeDefinition);
         }
 
         if (definition is List<RootNodeDefinition> rootNodeDefinitions)
         {
-            // Validate each root node definition.
-            foreach (var nodeDefinition in rootNodeDefinitions)
-            {
-                var result = ValidateJSONDefinition(nodeDefinition);
-                if (!result.Succeeded)
-                {
-                    return new DefinitionValidationResult
-                    {
-                        Succeeded = false,
-                        ErrorMessage = result.ErrorMessage,
-                        Json = null
-                    };
-                }
-            }
-
-            return new DefinitionValidationResult
-            {
-                Succeeded = true,
-                ErrorMessage = null,
-                Json = rootNodeDefinitions
-            };
+            return ValidateJsonDefinitions(rootNodeDefinitions);
         }
 
         // Try to deserialize as JSON.
@@ -300,13 +335,7 @@ public class BehaviourTree
             var jsonDefinition = JsonConvert.DeserializeObject<RootNodeDefinition>(jsonString);
             if (jsonDefinition != null)
             {
-                var result = ValidateJSONDefinition(jsonDefinition);
-                return new DefinitionValidationResult
-                {
-                    Succeeded = result.Succeeded,
-                    ErrorMessage = result.ErrorMessage,
-                    Json = result.Succeeded ? new List<RootNodeDefinition> { jsonDefinition } : null
-                };
+                return ValidateJSONDefinition(jsonDefinition);
             }
         }
         catch
@@ -317,8 +346,18 @@ public class BehaviourTree
         return DefinitionValidationResult.CreateFailure($"unexpected definition type of '{definition.GetType().Name}'");
     }
 
-    private static DefinitionValidationResult ValidateMDSLDefinition(string definition)
+    /// <summary>
+    /// Convert MDSL into behaviour tree definitions and validate it.
+    /// </summary>
+    /// <param name="definition">The MDSL source.</param>
+    /// <returns>A validation result.</returns>
+    public static DefinitionValidationResult ValidateMDSLDefinition(string definition)
     {
+        if (string.IsNullOrEmpty(definition))
+        {
+            return DefinitionValidationResult.CreateFailure("definition is null or empty");
+        }
+
         List<RootNodeDefinition> rootNodeDefinitions;
         try
         {
@@ -372,7 +411,7 @@ public class BehaviourTree
         // Validate each root node definition.
         foreach (var rootNodeDefinition in rootNodeDefinitions)
         {
-            var result = ValidateJSONDefinition(rootNodeDefinition);
+            var result = ValidateJSONDefinitionInternal(rootNodeDefinition);
             if (!result.Succeeded)
             {
                 return DefinitionValidationResult.CreateFailure(result.ErrorMessage ?? "validation failed");
@@ -387,7 +426,53 @@ public class BehaviourTree
         };
     }
 
-    private static DefinitionValidationResult ValidateJSONDefinition(RootNodeDefinition definition)
+    /// <summary>
+    /// Validates a list of behaviour tree definitions.
+    /// </summary>
+    /// <param name="rootNodeDefinitions">The definition to validate.</param>
+    /// <returns>A validation result.</returns>
+    public static DefinitionValidationResult ValidateJsonDefinitions(List<RootNodeDefinition> rootNodeDefinitions)
+    {
+        // Validate each root node definition.
+        foreach (var nodeDefinition in rootNodeDefinitions)
+        {
+            var result = ValidateJSONDefinitionInternal(nodeDefinition);
+            if (!result.Succeeded)
+            {
+                return new DefinitionValidationResult
+                {
+                    Succeeded = false,
+                    ErrorMessage = result.ErrorMessage,
+                    Json = null
+                };
+            }
+        }
+
+        return new DefinitionValidationResult
+        {
+            Succeeded = true,
+            ErrorMessage = null,
+            Json = rootNodeDefinitions
+        };
+    }
+
+    /// <summary>
+    /// Validates a behaviour tree definition.
+    /// </summary>
+    /// <param name="definition">The definition to validate.</param>
+    /// <returns>A validation result.</returns>
+    public static DefinitionValidationResult ValidateJSONDefinition(RootNodeDefinition definition)
+    {
+        var result = ValidateJSONDefinitionInternal(definition);
+        if (result.Succeeded)
+        {
+            result.Json = new List<RootNodeDefinition> { definition };
+        }
+
+        return result;
+    }
+
+    private static DefinitionValidationResult ValidateJSONDefinitionInternal(RootNodeDefinition definition)
     {
         // Basic validation - check that the definition has a type and required properties
         if (string.IsNullOrEmpty(definition.Type))
@@ -409,7 +494,6 @@ public class BehaviourTree
         {
             Succeeded = true,
             ErrorMessage = null,
-            Json = new List<RootNodeDefinition> { definition }
         };
     }
 
