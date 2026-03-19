@@ -283,7 +283,7 @@ public static class MDSLDefinitionParser
         {
             // Could have an ID argument
             var args = ParseArgumentTokens(tokens, placeholders);
-            if (args.Count == 1 && args[0].Type == "identifier")
+            if (args.Count == 1 && args[0].Type == ArgumentType.Identifier)
             {
                 node.Id = args[0].Value?.ToString();
             }
@@ -310,22 +310,15 @@ public static class MDSLDefinitionParser
     private static ActionNodeDefinition CreateActionNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var args = ParseArgumentTokens(tokens, placeholders);
-        if (args.Count == 0 || args[0].Type != "identifier")
+        if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
         {
             throw new Exception("expected action name identifier argument");
-        }
-
-        // Manual conversion to avoid LINQ allocations
-        var nodeArgs = new List<NodeArgument>();
-        for (int i = 1; i < args.Count; i++)
-        {
-            nodeArgs.Add(new NodeArgument { Value = args[i].Value });
         }
 
         var node = new ActionNodeDefinition
         {
             Call = args[0].Value?.ToString() ?? "",
-            Args = nodeArgs.ToArray()
+            Args = CreateNodeArguments(args, 1),
         };
 
         return node;
@@ -334,22 +327,15 @@ public static class MDSLDefinitionParser
     private static ConditionNodeDefinition CreateConditionNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var args = ParseArgumentTokens(tokens, placeholders);
-        if (args.Count == 0 || args[0].Type != "identifier")
+        if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
         {
             throw new Exception("expected condition name identifier argument");
-        }
-
-        // Manual conversion to avoid LINQ allocations
-        var nodeArgs = new List<NodeArgument>();
-        for (int i = 1; i < args.Count; i++)
-        {
-            nodeArgs.Add(new NodeArgument { Value = args[i].Value });
         }
 
         var node = new ConditionNodeDefinition
         {
             Call = args[0].Value?.ToString() ?? "",
-            Args = nodeArgs.ToArray()
+            Args = CreateNodeArguments(args, 1),
         };
 
         return node;
@@ -389,7 +375,7 @@ public static class MDSLDefinitionParser
                 var weights = new List<double>();
                 for (int i = 0; i < args.Count; i++)
                 {
-                    if (args[i].Type != "number" || !args[i].IsInteger)
+                    if (args[i].Type != ArgumentType.Number || !args[i].IsInteger)
                     {
                         throw new Exception("lotto node weight arguments must be positive integer values");
                     }
@@ -421,7 +407,7 @@ public static class MDSLDefinitionParser
                 // All wait node arguments MUST be of type number and must be integer
                 for (int i = 0; i < args.Count; i++)
                 {
-                    if (args[i].Type != "number" || !args[i].IsInteger)
+                    if (args[i].Type != ArgumentType.Number || !args[i].IsInteger)
                     {
                         throw new Exception("wait node durations must be integer values");
                     }
@@ -473,7 +459,7 @@ public static class MDSLDefinitionParser
                 // All repeat node arguments MUST be of type number and must be integer
                 for (int i = 0; i < args.Count; i++)
                 {
-                    if (args[i].Type != "number" || !args[i].IsInteger)
+                    if (args[i].Type != ArgumentType.Number || !args[i].IsInteger)
                     {
                         throw new Exception("repeat node iteration counts must be integer values");
                     }
@@ -526,7 +512,7 @@ public static class MDSLDefinitionParser
                 // All retry node arguments MUST be of type number and must be integer
                 for (int i = 0; i < args.Count; i++)
                 {
-                    if (args[i].Type != "number" || !args[i].IsInteger)
+                    if (args[i].Type != ArgumentType.Number || !args[i].IsInteger)
                     {
                         throw new Exception("retry node attempt counts must be integer values");
                     }
@@ -634,12 +620,12 @@ public static class MDSLDefinitionParser
     {
         if (token == "null")
         {
-            return new ArgumentDefinition { Value = null, Type = "null" };
+            return new ArgumentDefinition { Value = null, Type = ArgumentType.Null };
         }
 
         if (token == "true" || token == "false")
         {
-            return new ArgumentDefinition { Value = token == "true", Type = "boolean" };
+            return new ArgumentDefinition { Value = token == "true", Type = ArgumentType.Boolean };
         }
 
         if (double.TryParse(token, out var number))
@@ -647,7 +633,7 @@ public static class MDSLDefinitionParser
             return new ArgumentDefinition
             {
                 Value = number,
-                Type = "number",
+                Type = ArgumentType.Number,
                 IsInteger = number == (int)number
             };
         }
@@ -657,7 +643,7 @@ public static class MDSLDefinitionParser
             return new ArgumentDefinition
             {
                 Value = placeholders[token].Replace("\\\"", "\""),
-                Type = "string"
+                Type = ArgumentType.String,
             };
         }
 
@@ -666,11 +652,28 @@ public static class MDSLDefinitionParser
             return new ArgumentDefinition
             {
                 Value = token.Substring(1),
-                Type = "property_reference"
+                Type = ArgumentType.PropertyReference,
             };
         }
 
-        return new ArgumentDefinition { Value = token, Type = "identifier" };
+        return new ArgumentDefinition { Value = token, Type = ArgumentType.Identifier };
+    }
+
+    private static NodeArgument[] CreateNodeArguments(IList<ArgumentDefinition>? args, int startIndex)
+    {
+        if (args == null || args.Count <= startIndex)
+        {
+            return Array.Empty<NodeArgument>();
+        }
+
+        // Manual conversion to avoid LINQ allocations
+        var nodeArgs = new NodeArgument[args.Count - startIndex];
+        for (int i = 0; i < nodeArgs.Length; i++)
+        {
+            nodeArgs[i] = args[startIndex + i].ToNodeArgument();
+        }
+
+        return nodeArgs;
     }
 
     private static string PopAndCheck(List<string> tokens, string? expected = null)
@@ -751,11 +754,30 @@ public static class MDSLDefinitionParser
         public string ProcessedDefinition { get; set; } = "";
     }
 
-    private class ArgumentDefinition
+    private struct ArgumentDefinition
     {
         public object? Value { get; set; }
-        public string Type { get; set; } = "";
+        public ArgumentType Type { get; set; }
         public bool IsInteger { get; set; }
+
+        public NodeArgument ToNodeArgument()
+        {
+            return (Type) switch
+            {
+                ArgumentType.Identifier => throw new Exception($"invalid argument value '{Value}', must be string, number, boolean, agent property reference or null"),
+                ArgumentType.PropertyReference => new NodeArgument { AgentProperty = Value as string },
+                _ => new NodeArgument { Value = Value },
+            };
+        }
+    }
+
+    private enum ArgumentType
+    {
+        Null,
+        Identifier,
+        Boolean,
+        Number,
+        String,
+        PropertyReference,
     }
 }
-
