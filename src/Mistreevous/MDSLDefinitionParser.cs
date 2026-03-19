@@ -15,16 +15,16 @@ public static class MDSLDefinitionParser
     public static List<RootNodeDefinition> ConvertMDSLToJSON(string definition)
     {
         // Parse our definition string into a bunch of tokens.
-        var tokeniseResult = Tokenise(definition);
+        var tokenStream = Tokenise(definition);
 
         // Convert the tokens that we parsed from the MDSL definition into JSON and return it.
-        return ConvertTokensToJSONDefinition(tokeniseResult.Tokens, tokeniseResult.Placeholders);
+        return ConvertTokensToJSONDefinition(tokenStream);
     }
 
     private static readonly string SingleCharTokens = "(){}[],";
     private static readonly string[] SingleCharTokenStrings = { "(", ")", "{", "}", "[", "]", "," };
 
-    private static TokeniseResult Tokenise(string definition)
+    private static TokenStream Tokenise(string definition)
     {
         // Clean the definition by removing any comments.
         definition = Regex.Replace(definition, @"/\*(.|\n)*?\*/", "");
@@ -69,11 +69,7 @@ public static class MDSLDefinitionParser
             }
         }
 
-        return new TokeniseResult
-        {
-            Tokens = tokens,
-            Placeholders = stringLiteralResult.Placeholders
-        };
+        return new TokenStream(tokens, stringLiteralResult.Placeholders);
     }
 
     private static StringLiteralSubstitutionResult SubstituteStringLiterals(string definition)
@@ -113,7 +109,7 @@ public static class MDSLDefinitionParser
         };
     }
 
-    private static List<RootNodeDefinition> ConvertTokensToJSONDefinition(List<string> tokens, Dictionary<string, string> placeholders)
+    private static List<RootNodeDefinition> ConvertTokensToJSONDefinition(TokenStream tokens)
     {
         if (tokens.Count < 3)
         {
@@ -209,58 +205,57 @@ public static class MDSLDefinitionParser
         // Process tokens
         while (tokens.Count > 0)
         {
-            var token = tokens[0].ToUpper();
-            tokens.RemoveAt(0);
+            var token = tokens.Shift().ToUpper();
 
             switch (token)
             {
                 case "ROOT":
-                    PushNode(CreateRootNode(tokens, placeholders));
+                    PushNode(CreateRootNode(tokens));
                     break;
                 case "SEQUENCE":
-                    PushNode(CreateSequenceNode(tokens, placeholders));
+                    PushNode(CreateSequenceNode(tokens));
                     break;
                 case "SELECTOR":
-                    PushNode(CreateSelectorNode(tokens, placeholders));
+                    PushNode(CreateSelectorNode(tokens));
                     break;
                 case "PARALLEL":
-                    PushNode(CreateParallelNode(tokens, placeholders));
+                    PushNode(CreateParallelNode(tokens));
                     break;
                 case "RACE":
-                    PushNode(CreateRaceNode(tokens, placeholders));
+                    PushNode(CreateRaceNode(tokens));
                     break;
                 case "ALL":
-                    PushNode(CreateAllNode(tokens, placeholders));
+                    PushNode(CreateAllNode(tokens));
                     break;
                 case "LOTTO":
-                    PushNode(CreateLottoNode(tokens, placeholders));
+                    PushNode(CreateLottoNode(tokens));
                     break;
                 case "ACTION":
-                    PushNode(CreateActionNode(tokens, placeholders));
+                    PushNode(CreateActionNode(tokens));
                     break;
                 case "CONDITION":
-                    PushNode(CreateConditionNode(tokens, placeholders));
+                    PushNode(CreateConditionNode(tokens));
                     break;
                 case "WAIT":
-                    PushNode(CreateWaitNode(tokens, placeholders));
+                    PushNode(CreateWaitNode(tokens));
                     break;
                 case "REPEAT":
-                    PushNode(CreateRepeatNode(tokens, placeholders));
+                    PushNode(CreateRepeatNode(tokens));
                     break;
                 case "RETRY":
-                    PushNode(CreateRetryNode(tokens, placeholders));
+                    PushNode(CreateRetryNode(tokens));
                     break;
                 case "FLIP":
-                    PushNode(CreateFlipNode(tokens, placeholders));
+                    PushNode(CreateFlipNode(tokens));
                     break;
                 case "SUCCEED":
-                    PushNode(CreateSucceedNode(tokens, placeholders));
+                    PushNode(CreateSucceedNode(tokens));
                     break;
                 case "FAIL":
-                    PushNode(CreateFailNode(tokens, placeholders));
+                    PushNode(CreateFailNode(tokens));
                     break;
                 case "BRANCH":
-                    PushNode(CreateBranchNode(tokens, placeholders));
+                    PushNode(CreateBranchNode(tokens));
                     break;
                 case "}":
                     var poppedNode = PopNode();
@@ -277,7 +272,7 @@ public static class MDSLDefinitionParser
         return rootNodes;
     }
 
-    private static RootNodeDefinition CreateRootNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static RootNodeDefinition CreateRootNode(TokenStream tokens)
     {
         var node = new RootNodeDefinition();
 
@@ -285,37 +280,37 @@ public static class MDSLDefinitionParser
         if (tokens.Count > 0 && tokens[0] != "{")
         {
             // Could have an ID argument
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count == 1 && args[0].Type == ArgumentType.Identifier)
             {
                 node.Id = args[0].Value?.ToString();
             }
         }
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static SequenceNodeDefinition CreateSequenceNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static SequenceNodeDefinition CreateSequenceNode(TokenStream tokens)
     {
         var node = new SequenceNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static SelectorNodeDefinition CreateSelectorNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static SelectorNodeDefinition CreateSelectorNode(TokenStream tokens)
     {
         var node = new SelectorNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static ActionNodeDefinition CreateActionNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static ActionNodeDefinition CreateActionNode(TokenStream tokens)
     {
-        var args = ParseArgumentTokens(tokens, placeholders);
+        var args = ParseArgumentTokens(tokens);
         if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
         {
             throw new Exception("expected action name identifier argument");
@@ -327,13 +322,13 @@ public static class MDSLDefinitionParser
             Args = CreateNodeArguments(args, 1),
         };
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         return node;
     }
 
-    private static ConditionNodeDefinition CreateConditionNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static ConditionNodeDefinition CreateConditionNode(TokenStream tokens)
     {
-        var args = ParseArgumentTokens(tokens, placeholders);
+        var args = ParseArgumentTokens(tokens);
         if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
         {
             throw new Exception("expected condition name identifier argument");
@@ -345,42 +340,42 @@ public static class MDSLDefinitionParser
             Args = CreateNodeArguments(args, 1),
         };
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         return node;
     }
 
-    private static ParallelNodeDefinition CreateParallelNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static ParallelNodeDefinition CreateParallelNode(TokenStream tokens)
     {
         var node = new ParallelNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static RaceNodeDefinition CreateRaceNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static RaceNodeDefinition CreateRaceNode(TokenStream tokens)
     {
         var node = new RaceNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static AllNodeDefinition CreateAllNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static AllNodeDefinition CreateAllNode(TokenStream tokens)
     {
         var node = new AllNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static LottoNodeDefinition CreateLottoNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static LottoNodeDefinition CreateLottoNode(TokenStream tokens)
     {
         var node = new LottoNodeDefinition();
         
         // Parse optional weights argument
         if (tokens.Count > 0 && tokens[0] == "[")
         {
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count > 0)
             {
                 var weights = new List<double>();
@@ -401,19 +396,19 @@ public static class MDSLDefinitionParser
             }
         }
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static WaitNodeDefinition CreateWaitNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static WaitNodeDefinition CreateWaitNode(TokenStream tokens)
     {
         var node = new WaitNodeDefinition();
         
         // Parse optional duration argument
         if (tokens.Count > 0 && tokens[0] == "[")
         {
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count > 0)
             {
                 // All wait node arguments MUST be of type number and must be integer
@@ -455,18 +450,18 @@ public static class MDSLDefinitionParser
             }
         }
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         return node;
     }
 
-    private static RepeatNodeDefinition CreateRepeatNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static RepeatNodeDefinition CreateRepeatNode(TokenStream tokens)
     {
         var node = new RepeatNodeDefinition();
         
         // Parse optional iterations argument
         if (tokens.Count > 0 && tokens[0] == "[")
         {
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count > 0)
             {
                 // All repeat node arguments MUST be of type number and must be integer
@@ -508,19 +503,19 @@ public static class MDSLDefinitionParser
             }
         }
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static RetryNodeDefinition CreateRetryNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static RetryNodeDefinition CreateRetryNode(TokenStream tokens)
     {
         var node = new RetryNodeDefinition();
         
         // Parse optional attempts argument
         if (tokens.Count > 0 && tokens[0] == "[")
         {
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count > 0)
             {
                 // All retry node arguments MUST be of type number and must be integer
@@ -562,38 +557,38 @@ public static class MDSLDefinitionParser
             }
         }
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static FlipNodeDefinition CreateFlipNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static FlipNodeDefinition CreateFlipNode(TokenStream tokens)
     {
         var node = new FlipNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static SucceedNodeDefinition CreateSucceedNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static SucceedNodeDefinition CreateSucceedNode(TokenStream tokens)
     {
         var node = new SucceedNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static FailNodeDefinition CreateFailNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static FailNodeDefinition CreateFailNode(TokenStream tokens)
     {
         var node = new FailNodeDefinition();
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         PopAndCheck(tokens, "{");
         return node;
     }
 
-    private static BranchNodeDefinition CreateBranchNode(List<string> tokens, Dictionary<string, string> placeholders)
+    private static BranchNodeDefinition CreateBranchNode(TokenStream tokens)
     {
-        var args = ParseArgumentTokens(tokens, placeholders);
+        var args = ParseArgumentTokens(tokens);
         if (args.Count != 1 || args[0].Type != ArgumentType.Identifier)
         {
             throw new Exception("expected single branch name argument");
@@ -604,7 +599,7 @@ public static class MDSLDefinitionParser
             Ref = args[0].Value?.ToString() ?? "",
         };
 
-        ParseAttributeTokens(node, tokens, placeholders);
+        ParseAttributeTokens(node, tokens);
         return node;
     }
 
@@ -625,7 +620,7 @@ public static class MDSLDefinitionParser
 
     private static readonly string[] ArgumentStartTokens = { "[", "(" };
 
-    private static List<ArgumentDefinition> ParseArgumentTokens(List<string> tokens, Dictionary<string, string> placeholders)
+    private static List<ArgumentDefinition> ParseArgumentTokens(TokenStream tokens)
     {
         var argumentList = new List<ArgumentDefinition>();
 
@@ -651,7 +646,7 @@ public static class MDSLDefinitionParser
             
             if (shouldBeArgument)
             {
-                argumentList.Add(GetArgumentDefinition(argumentListTokens[i], placeholders));
+                argumentList.Add(GetArgumentDefinition(argumentListTokens[i], tokens.StringLiteralPlaceholders));
             }
             else
             {
@@ -732,7 +727,7 @@ public static class MDSLDefinitionParser
 
     private static readonly string[] SucceedOrFail = { "succeed", "fail" };
 
-    private static void ParseAttributeTokens(NodeDefinition nodeDefinition, List<string> tokens, Dictionary<string, string> placeholders)
+    private static void ParseAttributeTokens(NodeDefinition nodeDefinition, TokenStream tokens)
     {
         while (tokens.Count > 0)
         {
@@ -740,27 +735,27 @@ public static class MDSLDefinitionParser
             if (token.Equals("while", StringComparison.OrdinalIgnoreCase))
             {
                 CheckAttributeDuplication(nodeDefinition.While, token);
-                nodeDefinition.While = ParseGuardDefinition(new NodeGuardDefinition(), tokens, placeholders);
+                nodeDefinition.While = ParseGuardDefinition(new NodeGuardDefinition(), tokens);
             }
             else if (token.Equals("until", StringComparison.OrdinalIgnoreCase))
             {
                 CheckAttributeDuplication(nodeDefinition.Until, token);
-                nodeDefinition.Until = ParseGuardDefinition(new NodeGuardDefinition(), tokens, placeholders);
+                nodeDefinition.Until = ParseGuardDefinition(new NodeGuardDefinition(), tokens);
             }
             else if (token.Equals("entry", StringComparison.OrdinalIgnoreCase))
             {
                 CheckAttributeDuplication(nodeDefinition.Entry, token);
-                nodeDefinition.Entry = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+                nodeDefinition.Entry = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens);
             }
             else if (token.Equals("exit", StringComparison.OrdinalIgnoreCase))
             {
                 CheckAttributeDuplication(nodeDefinition.Exit, token);
-                nodeDefinition.Exit = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+                nodeDefinition.Exit = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens);
             }
             else if (token.Equals("step", StringComparison.OrdinalIgnoreCase))
             {
                 CheckAttributeDuplication(nodeDefinition.Step, token);
-                nodeDefinition.Step = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+                nodeDefinition.Step = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens);
             }
             else
             {
@@ -776,11 +771,11 @@ public static class MDSLDefinitionParser
             }
         }
 
-        static NodeAttributeDefinition ParseAttributeDefinition(NodeAttributeDefinition nodeAttribute, List<string> tokens, Dictionary<string, string> placeholders)
+        static NodeAttributeDefinition ParseAttributeDefinition(NodeAttributeDefinition nodeAttribute, TokenStream tokens)
         {
-            tokens.RemoveAt(0);
+            tokens.Skip(1);
 
-            var args = ParseArgumentTokens(tokens, placeholders);
+            var args = ParseArgumentTokens(tokens);
             if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
             {
                 throw new Exception("expected agent function or registered function name identifier argument for attribute");
@@ -791,14 +786,14 @@ public static class MDSLDefinitionParser
             return nodeAttribute;
         }
 
-        static NodeGuardDefinition ParseGuardDefinition(NodeGuardDefinition nodeGuard, List<string> tokens, Dictionary<string, string> placeholders)
+        static NodeGuardDefinition ParseGuardDefinition(NodeGuardDefinition nodeGuard, TokenStream tokens)
         {
-            ParseAttributeDefinition(nodeGuard, tokens, placeholders);
+            ParseAttributeDefinition(nodeGuard, tokens);
 
             var succeedOnAbort = false;
             if (tokens.Count > 0 && tokens[0].Equals("then", StringComparison.OrdinalIgnoreCase))
             {
-                tokens.RemoveAt(0);
+                tokens.Skip(1);
                 PopAndCheck(tokens, SucceedOrFail, out var found);
                 succeedOnAbort = found == 0;
             }
@@ -810,15 +805,14 @@ public static class MDSLDefinitionParser
 
     #endregion
 
-    private static string PopAndCheck(List<string> tokens, string? expected = null)
+    private static string PopAndCheck(TokenStream tokens, string? expected = null)
     {
         if (tokens.Count == 0)
         {
             throw new Exception("unexpected end of definition");
         }
 
-        var popped = tokens[0];
-        tokens.RemoveAt(0);
+        var popped = tokens.Shift();
 
         if (expected != null)
         {
@@ -832,12 +826,12 @@ public static class MDSLDefinitionParser
         return popped;
     }
 
-    private static string PopAndCheck(List<string> tokens, string[]? expected)
+    private static string PopAndCheck(TokenStream tokens, string[]? expected)
     {
         return PopAndCheck(tokens, expected, out var _);
     }
 
-    private static string PopAndCheck(List<string> tokens, string[]? expected, out int foundIndex)
+    private static string PopAndCheck(TokenStream tokens, string[]? expected, out int foundIndex)
     {
         foundIndex = -1;
         if (tokens.Count == 0)
@@ -845,8 +839,7 @@ public static class MDSLDefinitionParser
             throw new Exception("unexpected end of definition");
         }
 
-        var popped = tokens[0];
-        tokens.RemoveAt(0);
+        var popped = tokens.Shift();
 
         if (expected != null && expected.Length > 0)
         {
@@ -869,10 +862,39 @@ public static class MDSLDefinitionParser
         return popped;
     }
 
-    private class TokeniseResult
+    private class TokenStream
     {
-        public List<string> Tokens { get; set; } = new();
-        public Dictionary<string, string> Placeholders { get; set; } = new();
+        private readonly List<string> _tokens;
+
+        private int _cursor;
+
+        public string this[int index]
+        {
+            get { return _tokens[_cursor + index]; }
+        }
+
+        public int Count => _tokens.Count - _cursor;
+
+        public Dictionary<string, string> StringLiteralPlaceholders { get; }
+
+        public TokenStream(List<string> tokens, Dictionary<string, string> stringLiteralPlaceholders)
+        {
+            _cursor = 0;
+            _tokens = tokens;
+            StringLiteralPlaceholders = stringLiteralPlaceholders;
+        }
+
+        public string Shift()
+        {
+            var popped = _tokens[_cursor];
+            _cursor++;
+            return popped;
+        }
+
+        public void Skip(int count)
+        {
+            _cursor += count;
+        }
     }
 
     private class StringLiteralSubstitutionResult
