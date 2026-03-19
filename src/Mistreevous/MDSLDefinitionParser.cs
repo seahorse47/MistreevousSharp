@@ -259,6 +259,9 @@ public static class MDSLDefinitionParser
                 case "FAIL":
                     PushNode(CreateFailNode(tokens, placeholders));
                     break;
+                case "BRANCH":
+                    PushNode(CreateBranchNode(tokens, placeholders));
+                    break;
                 case "}":
                     var poppedNode = PopNode();
                     if (poppedNode != null)
@@ -585,6 +588,23 @@ public static class MDSLDefinitionParser
         var node = new FailNodeDefinition();
         ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
+        return node;
+    }
+
+    private static BranchNodeDefinition CreateBranchNode(List<string> tokens, Dictionary<string, string> placeholders)
+    {
+        var args = ParseArgumentTokens(tokens, placeholders);
+        if (args.Count != 1 || args[0].Type != ArgumentType.Identifier)
+        {
+            throw new Exception("expected single branch name argument");
+        }
+
+        var node = new BranchNodeDefinition
+        {
+            Ref = args[0].Value?.ToString() ?? "",
+        };
+
+        ParseAttributeTokens(node, tokens, placeholders);
         return node;
     }
 
