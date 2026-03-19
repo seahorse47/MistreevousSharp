@@ -174,9 +174,9 @@ public static class Lookup
     /// <summary>
     /// Gets all registered subtree root node definitions.
     /// </summary>
-    public static Dictionary<string, RootNodeDefinition> GetSubtrees()
+    public static IReadOnlyDictionary<string, RootNodeDefinition> GetSubtrees()
     {
-        return new Dictionary<string, RootNodeDefinition>(_registeredSubtrees);
+        return _registeredSubtrees;
     }
 
     /// <summary>
