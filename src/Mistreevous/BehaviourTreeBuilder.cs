@@ -8,18 +8,12 @@ namespace Mistreevous;
 public interface IRootNodeDefinitionMap
 {
     /// <summary>
-    /// Gets the definition that has the specified key.
+    /// Attempt to get the definition that has the specified key.
     /// </summary>
     /// <param name="key"></param>
-    /// <returns></returns>
-    RootNodeDefinition this[string key] { get; }
-
-    /// <summary>
-    /// Determines whether contains an definition that has the specified key.
-    /// </summary>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    bool ContainsKey(string key);
+    /// <param name="value"></param>
+    /// <returns>`true` if the definition exists</returns>
+    bool TryGetValue(string key, out RootNodeDefinition? value);
 }
 
 /// <summary>
@@ -103,7 +97,7 @@ public static class BehaviourTreeBuilder
             case "fail":
                 return CreateFailNode(attributes, options, (FailNodeDefinition)definition, rootNodeDefinitionMap);
             case "branch":
-                return NodeFactory(rootNodeDefinitionMap[((BranchNodeDefinition)definition).Ref].Child!, rootNodeDefinitionMap, options);
+                return NodeFactory(ResolveReferencedNode(rootNodeDefinitionMap, ((BranchNodeDefinition)definition).Ref).Child!, rootNodeDefinitionMap, options);
             default:
                 throw new Exception($"unknown node type: {definition.Type}");
         }
@@ -532,6 +526,16 @@ public static class BehaviourTreeBuilder
         }
 
         return (mainDefinition, rootNodeMap);
+    }
+
+    private static RootNodeDefinition ResolveReferencedNode(IRootNodeDefinitionMap rootNodeDefinitionMap, string key)
+    {
+        if (!rootNodeDefinitionMap.TryGetValue(key, out var referencedNodeDefinition))
+        {
+            throw new Exception($"referenced node not found for key: {key}");
+        }
+
+        return referencedNodeDefinition!;
     }
 
     private static void ApplyLeafNodeGuardPaths(Root root)
