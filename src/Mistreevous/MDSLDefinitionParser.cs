@@ -21,6 +21,9 @@ public static class MDSLDefinitionParser
         return ConvertTokensToJSONDefinition(tokeniseResult.Tokens, tokeniseResult.Placeholders);
     }
 
+    private static readonly string SingleCharTokens = "(){}[],";
+    private static readonly string[] SingleCharTokenStrings = { "(", ")", "{", "}", "[", "]", "," };
+
     private static TokeniseResult Tokenise(string definition)
     {
         // Clean the definition by removing any comments.
@@ -28,37 +31,41 @@ public static class MDSLDefinitionParser
 
         // Swap out any node/attribute argument string literals with a placeholder
         var stringLiteralResult = SubstituteStringLiterals(definition);
-
-        // Add some space around various important characters so that they can be plucked out easier as individual tokens.
-        var processedDefinition = stringLiteralResult.ProcessedDefinition
-            .Replace("(", " ( ")
-            .Replace(")", " ) ")
-            .Replace("{", " { ")
-            .Replace("}", " } ")
-            .Replace("]", " ] ")
-            .Replace("[", " [ ")
-            .Replace(",", " , ");
+        var processedDefinition = stringLiteralResult.ProcessedDefinition;
 
         // Manual tokenization to avoid LINQ allocations
         var tokens = new List<string>();
-        var normalized = Regex.Replace(processedDefinition, @"\s+", " ").Trim();
-        if (normalized.Length > 0)
+        if (processedDefinition.Length > 0)
         {
             int start = 0;
-            for (int i = 0; i < normalized.Length; i++)
+            for (int i = 0; i < processedDefinition.Length; i++)
             {
-                if (normalized[i] == ' ')
+                var c = processedDefinition[i];
+                var isWhiteSpace = char.IsWhiteSpace(c);
+                var singleCharTokenIndex = !isWhiteSpace ? SingleCharTokens.IndexOf(c) : -1;
+                if (isWhiteSpace || singleCharTokenIndex >= 0)
                 {
-                    if (i > start)
+                    if (start >= 0 && i > start)
                     {
-                        tokens.Add(normalized.Substring(start, i - start));
+                        tokens.Add(processedDefinition.Substring(start, i - start));
+                        start = -1;
                     }
-                    start = i + 1;
+
+                    if (singleCharTokenIndex >= 0)
+                    {
+                        tokens.Add(SingleCharTokenStrings[singleCharTokenIndex]);
+                        start = -1;
+                    }
+                }
+                else if (start < 0)
+                {
+                    start = i;
                 }
             }
-            if (start < normalized.Length)
+
+            if (start >= 0 && start < processedDefinition.Length)
             {
-                tokens.Add(normalized.Substring(start));
+                tokens.Add(processedDefinition.Substring(start));
             }
         }
 
