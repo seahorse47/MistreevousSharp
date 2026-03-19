@@ -3,6 +3,26 @@ using Newtonsoft.Json.Linq;
 namespace Mistreevous;
 
 /// <summary>
+/// Interface for querying named root node definitions.
+/// </summary>
+public interface IRootNodeDefinitionMap
+{
+    /// <summary>
+    /// Gets the definition that has the specified key.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    RootNodeDefinition this[string key] { get; }
+
+    /// <summary>
+    /// Determines whether contains an definition that has the specified key.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    bool ContainsKey(string key);
+}
+
+/// <summary>
 /// Builder for creating behaviour tree node instances from definitions.
 /// </summary>
 public static class BehaviourTreeBuilder
@@ -15,29 +35,23 @@ public static class BehaviourTreeBuilder
     /// <param name="definition">The root node definitions.</param>
     /// <param name="options">The behaviour tree options.</param>
     /// <returns>The built and populated root node definitions.</returns>
-    public static Root BuildRootNode(List<RootNodeDefinition> definition, BehaviourTreeOptions options)
+    public static Root BuildRootNode(IReadOnlyList<RootNodeDefinition> definition, BehaviourTreeOptions options)
     {
         // Create a mapping of root node identifiers to root node definitions, including globally registered subtree root node definitions.
-        var rootNodeDefinitionMap = CreateRootNodeDefinitionMap(definition);
+        var (mainDefinition, rootNodeDefinitionMap) = FindMainDefinitionAndCreateDefinitionMap(definition);
+        return BuildRootNode(mainDefinition, options, rootNodeDefinitionMap);
+    }
 
-        // Create our populated tree of node instances, starting with our main root node.
-        // Manual key access to avoid LINQ
-        string mainRootKey;
-        if (rootNodeDefinitionMap.ContainsKey(MainRootNodeKey))
-        {
-            mainRootKey = MainRootNodeKey;
-        }
-        else
-        {
-            // Get first key manually
-            mainRootKey = null!;
-            foreach (var key in rootNodeDefinitionMap.Keys)
-            {
-                mainRootKey = key;
-                break;
-            }
-        }
-        var rootNode = NodeFactory(rootNodeDefinitionMap[mainRootKey], rootNodeDefinitionMap, options) as Root;
+    /// <summary>
+    /// Build and populate the root nodes based on the provided definition, assuming that the definition has been validated.
+    /// </summary>
+    /// <param name="mainDefinition">The main root node definition.</param>
+    /// <param name="options">The behaviour tree options.</param>
+    /// <param name="rootNodeDefinitionMap">For querying node definitions referenced by the provided main definition.</param>
+    /// <returns>The built and populated root node definitions.</returns>
+    public static Root BuildRootNode(RootNodeDefinition mainDefinition, BehaviourTreeOptions options, IRootNodeDefinitionMap rootNodeDefinitionMap)
+    {
+        var rootNode = NodeFactory(mainDefinition, rootNodeDefinitionMap, options) as Root;
 
         if (rootNode == null)
         {
@@ -50,7 +64,7 @@ public static class BehaviourTreeBuilder
         return rootNode;
     }
 
-    private static Node NodeFactory(NodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap, BehaviourTreeOptions options)
+    private static Node NodeFactory(NodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap, BehaviourTreeOptions options)
     {
         // Create the attributes for the node.
         var attributes = CreateNodeAttributes(definition);
@@ -95,7 +109,7 @@ public static class BehaviourTreeBuilder
         }
     }
 
-    private static Sequence CreateSequenceNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Sequence CreateSequenceNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -110,7 +124,7 @@ public static class BehaviourTreeBuilder
         return new Sequence(attributes, options, children);
     }
 
-    private static Root CreateRootNode(List<Attribute> attributes, BehaviourTreeOptions options, RootNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Root CreateRootNode(List<Attribute> attributes, BehaviourTreeOptions options, RootNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Child == null)
         {
@@ -119,7 +133,7 @@ public static class BehaviourTreeBuilder
         return new Root(attributes, options, NodeFactory(definition.Child, rootNodeDefinitionMap, options));
     }
 
-    private static Selector CreateSelectorNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Selector CreateSelectorNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -134,7 +148,7 @@ public static class BehaviourTreeBuilder
         return new Selector(attributes, options, children);
     }
 
-    private static Parallel CreateParallelNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Parallel CreateParallelNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -149,7 +163,7 @@ public static class BehaviourTreeBuilder
         return new Parallel(attributes, options, children);
     }
 
-    private static Race CreateRaceNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Race CreateRaceNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -164,7 +178,7 @@ public static class BehaviourTreeBuilder
         return new Race(attributes, options, children);
     }
 
-    private static All CreateAllNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static All CreateAllNode(List<Attribute> attributes, BehaviourTreeOptions options, CompositeNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -179,7 +193,7 @@ public static class BehaviourTreeBuilder
         return new All(attributes, options, children);
     }
 
-    private static Lotto CreateLottoNode(List<Attribute> attributes, BehaviourTreeOptions options, LottoNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Lotto CreateLottoNode(List<Attribute> attributes, BehaviourTreeOptions options, LottoNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Children == null || definition.Children.Count == 0)
         {
@@ -210,7 +224,7 @@ public static class BehaviourTreeBuilder
         return new Wait(attributes, options, duration, durationMin, durationMax);
     }
 
-    private static Repeat CreateRepeatNode(List<Attribute> attributes, BehaviourTreeOptions options, RepeatNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Repeat CreateRepeatNode(List<Attribute> attributes, BehaviourTreeOptions options, RepeatNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         ParseIterations(definition.Iterations, out int? iterations, out int? iterationsMin, out int? iterationsMax);
         
@@ -234,7 +248,7 @@ public static class BehaviourTreeBuilder
         return new Repeat(attributes, options, iterations, iterationsMin, iterationsMax, NodeFactory(definition.Child!, rootNodeDefinitionMap, options));
     }
 
-    private static Retry CreateRetryNode(List<Attribute> attributes, BehaviourTreeOptions options, RetryNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Retry CreateRetryNode(List<Attribute> attributes, BehaviourTreeOptions options, RetryNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         ParseAttempts(definition.Attempts, out int? attempts, out int? attemptsMin, out int? attemptsMax);
         
@@ -258,7 +272,7 @@ public static class BehaviourTreeBuilder
         return new Retry(attributes, options, attempts, attemptsMin, attemptsMax, NodeFactory(definition.Child!, rootNodeDefinitionMap, options));
     }
 
-    private static Flip CreateFlipNode(List<Attribute> attributes, BehaviourTreeOptions options, FlipNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Flip CreateFlipNode(List<Attribute> attributes, BehaviourTreeOptions options, FlipNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Child == null)
         {
@@ -267,7 +281,7 @@ public static class BehaviourTreeBuilder
         return new Flip(attributes, options, NodeFactory(definition.Child, rootNodeDefinitionMap, options));
     }
 
-    private static Succeed CreateSucceedNode(List<Attribute> attributes, BehaviourTreeOptions options, SucceedNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Succeed CreateSucceedNode(List<Attribute> attributes, BehaviourTreeOptions options, SucceedNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Child == null)
         {
@@ -276,7 +290,7 @@ public static class BehaviourTreeBuilder
         return new Succeed(attributes, options, NodeFactory(definition.Child, rootNodeDefinitionMap, options));
     }
 
-    private static Fail CreateFailNode(List<Attribute> attributes, BehaviourTreeOptions options, FailNodeDefinition definition, Dictionary<string, RootNodeDefinition> rootNodeDefinitionMap)
+    private static Fail CreateFailNode(List<Attribute> attributes, BehaviourTreeOptions options, FailNodeDefinition definition, IRootNodeDefinitionMap rootNodeDefinitionMap)
     {
         if (definition.Child == null)
         {
@@ -488,9 +502,9 @@ public static class BehaviourTreeBuilder
         return attributes;
     }
 
-    private static Dictionary<string, RootNodeDefinition> CreateRootNodeDefinitionMap(List<RootNodeDefinition> definition)
+    private static (RootNodeDefinition, IRootNodeDefinitionMap) FindMainDefinitionAndCreateDefinitionMap(IReadOnlyList<RootNodeDefinition> definition)
     {
-        var rootNodeMap = new Dictionary<string, RootNodeDefinition>();
+        var rootNodeMap = new SimpleRootNodeDefinitionMap();
 
         // Add in any registered subtree root node definitions.
         foreach (var (name, rootNodeDefinition) in Lookup.GetSubtrees())
@@ -503,14 +517,21 @@ public static class BehaviourTreeBuilder
             };
         }
 
+        RootNodeDefinition mainDefinition = definition[0];
         // Populate the map with the root node definitions that were included with the tree definition.
         foreach (var rootNodeDefinition in definition)
         {
-            var key = string.IsNullOrEmpty(rootNodeDefinition.Id) ? MainRootNodeKey : rootNodeDefinition.Id;
-            rootNodeMap[key] = rootNodeDefinition;
+            if (string.IsNullOrEmpty(rootNodeDefinition.Id))
+            {
+                mainDefinition = rootNodeDefinition;
+            }
+            else
+            {
+                rootNodeMap[rootNodeDefinition.Id] = rootNodeDefinition;
+            }
         }
 
-        return rootNodeMap;
+        return (mainDefinition, rootNodeMap);
     }
 
     private static void ApplyLeafNodeGuardPaths(Root root)
@@ -581,5 +602,8 @@ public static class BehaviourTreeBuilder
             }
         }
     }
-}
 
+    private class SimpleRootNodeDefinitionMap : Dictionary<string, RootNodeDefinition>, IRootNodeDefinitionMap
+    {
+    }
+}
