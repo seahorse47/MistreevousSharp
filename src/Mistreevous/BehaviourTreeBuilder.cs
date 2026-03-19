@@ -320,6 +320,18 @@ public static class BehaviourTreeBuilder
         {
             durationValue = (int)doubleValue;
         }
+        else if (duration is int[] intArray)
+        {
+            if (intArray.Length >= 2)
+            {
+                durationMin = intArray[0];
+                durationMax = intArray[1];
+            }
+            else if (intArray.Length == 1)
+            {
+                durationValue = intArray[0];
+            }
+        }
     }
 
     private static void ParseIterations(object? iterations, out int? iterationsValue, out int? iterationsMin, out int? iterationsMax)
@@ -357,6 +369,18 @@ public static class BehaviourTreeBuilder
         {
             iterationsValue = (int)doubleValue;
         }
+        else if (iterations is int[] intArray)
+        {
+            if (intArray.Length >= 2)
+            {
+                iterationsMin = intArray[0];
+                iterationsMax = intArray[1];
+            }
+            else if (intArray.Length == 1)
+            {
+                iterationsValue = intArray[0];
+            }
+        }
     }
 
     private static void ParseAttempts(object? attempts, out int? attemptsValue, out int? attemptsMin, out int? attemptsMax)
@@ -393,6 +417,18 @@ public static class BehaviourTreeBuilder
         else if (attempts is double doubleValue)
         {
             attemptsValue = (int)doubleValue;
+        }
+        else if (attempts is int[] intArray)
+        {
+            if (intArray.Length >= 2)
+            {
+                attemptsMin = intArray[0];
+                attemptsMax = intArray[1];
+            }
+            else if (intArray.Length == 1)
+            {
+                attemptsValue = intArray[0];
+            }
         }
     }
 
