@@ -289,6 +289,7 @@ public static class MDSLDefinitionParser
             }
         }
 
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -296,6 +297,7 @@ public static class MDSLDefinitionParser
     private static SequenceNodeDefinition CreateSequenceNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new SequenceNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -303,6 +305,7 @@ public static class MDSLDefinitionParser
     private static SelectorNodeDefinition CreateSelectorNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new SelectorNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -321,6 +324,7 @@ public static class MDSLDefinitionParser
             Args = CreateNodeArguments(args, 1),
         };
 
+        ParseAttributeTokens(node, tokens, placeholders);
         return node;
     }
 
@@ -338,12 +342,14 @@ public static class MDSLDefinitionParser
             Args = CreateNodeArguments(args, 1),
         };
 
+        ParseAttributeTokens(node, tokens, placeholders);
         return node;
     }
 
     private static ParallelNodeDefinition CreateParallelNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new ParallelNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -351,6 +357,7 @@ public static class MDSLDefinitionParser
     private static RaceNodeDefinition CreateRaceNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new RaceNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -358,6 +365,7 @@ public static class MDSLDefinitionParser
     private static AllNodeDefinition CreateAllNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new AllNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -389,7 +397,8 @@ public static class MDSLDefinitionParser
                 node.Weights = weights.ToArray();
             }
         }
-        
+
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -442,7 +451,8 @@ public static class MDSLDefinitionParser
                 }
             }
         }
-        
+
+        ParseAttributeTokens(node, tokens, placeholders);
         return node;
     }
 
@@ -494,7 +504,8 @@ public static class MDSLDefinitionParser
                 }
             }
         }
-        
+
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -547,7 +558,8 @@ public static class MDSLDefinitionParser
                 }
             }
         }
-        
+
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -555,6 +567,7 @@ public static class MDSLDefinitionParser
     private static FlipNodeDefinition CreateFlipNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new FlipNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -562,6 +575,7 @@ public static class MDSLDefinitionParser
     private static SucceedNodeDefinition CreateSucceedNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new SucceedNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
@@ -569,9 +583,25 @@ public static class MDSLDefinitionParser
     private static FailNodeDefinition CreateFailNode(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var node = new FailNodeDefinition();
+        ParseAttributeTokens(node, tokens, placeholders);
         PopAndCheck(tokens, "{");
         return node;
     }
+
+    private static void ValidatePoppedNode(NodeDefinition definition)
+    {
+        if (definition is DecoratorNodeDefinition decorator && decorator.Child == null)
+        {
+            throw new Exception($"a {definition.Type} node must have a single child node defined");
+        }
+
+        if (definition is CompositeNodeDefinition composite && (composite.Children == null || composite.Children.Count == 0))
+        {
+            throw new Exception($"a {definition.Type} node must have at least a single child node defined");
+        }
+    }
+
+    #region Argument Parser
 
     private static readonly string[] ArgumentStartTokens = { "[", "(" };
 
@@ -676,6 +706,90 @@ public static class MDSLDefinitionParser
         return nodeArgs;
     }
 
+    #endregion
+
+    #region Attribute Parser
+
+    private static readonly string[] SucceedOrFail = { "succeed", "fail" };
+
+    private static void ParseAttributeTokens(NodeDefinition nodeDefinition, List<string> tokens, Dictionary<string, string> placeholders)
+    {
+        while (tokens.Count > 0)
+        {
+            var token = tokens[0];
+            if (token.Equals("while", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckAttributeDuplication(nodeDefinition.While, token);
+                nodeDefinition.While = ParseGuardDefinition(new NodeGuardDefinition(), tokens, placeholders);
+            }
+            else if (token.Equals("until", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckAttributeDuplication(nodeDefinition.Until, token);
+                nodeDefinition.Until = ParseGuardDefinition(new NodeGuardDefinition(), tokens, placeholders);
+            }
+            else if (token.Equals("entry", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckAttributeDuplication(nodeDefinition.Entry, token);
+                nodeDefinition.Entry = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+            }
+            else if (token.Equals("exit", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckAttributeDuplication(nodeDefinition.Exit, token);
+                nodeDefinition.Exit = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+            }
+            else if (token.Equals("step", StringComparison.OrdinalIgnoreCase))
+            {
+                CheckAttributeDuplication(nodeDefinition.Step, token);
+                nodeDefinition.Step = ParseAttributeDefinition(new NodeAttributeDefinition(), tokens, placeholders);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        static void CheckAttributeDuplication(NodeAttributeDefinition? nodeAttribute, string attributeToken)
+        {
+            if (nodeAttribute != null)
+            {
+                throw new Exception($"duplicate attribute '${attributeToken.ToUpper()}' found for node");
+            }
+        }
+
+        static NodeAttributeDefinition ParseAttributeDefinition(NodeAttributeDefinition nodeAttribute, List<string> tokens, Dictionary<string, string> placeholders)
+        {
+            tokens.RemoveAt(0);
+
+            var args = ParseArgumentTokens(tokens, placeholders);
+            if (args.Count == 0 || args[0].Type != ArgumentType.Identifier)
+            {
+                throw new Exception("expected agent function or registered function name identifier argument for attribute");
+            }
+
+            nodeAttribute.Call = (args[0].Value as string)!;
+            nodeAttribute.Args = CreateNodeArguments(args, 1);
+            return nodeAttribute;
+        }
+
+        static NodeGuardDefinition ParseGuardDefinition(NodeGuardDefinition nodeGuard, List<string> tokens, Dictionary<string, string> placeholders)
+        {
+            ParseAttributeDefinition(nodeGuard, tokens, placeholders);
+
+            var succeedOnAbort = false;
+            if (tokens.Count > 0 && tokens[0].Equals("then", StringComparison.OrdinalIgnoreCase))
+            {
+                tokens.RemoveAt(0);
+                PopAndCheck(tokens, SucceedOrFail, out var found);
+                succeedOnAbort = found == 0;
+            }
+
+            nodeGuard.SucceedOnAbort = succeedOnAbort;
+            return nodeGuard;
+        }
+    }
+
+    #endregion
+
     private static string PopAndCheck(List<string> tokens, string? expected = null)
     {
         if (tokens.Count == 0)
@@ -700,6 +814,12 @@ public static class MDSLDefinitionParser
 
     private static string PopAndCheck(List<string> tokens, string[]? expected)
     {
+        return PopAndCheck(tokens, expected, out var _);
+    }
+
+    private static string PopAndCheck(List<string> tokens, string[]? expected, out int foundIndex)
+    {
+        foundIndex = -1;
         if (tokens.Count == 0)
         {
             throw new Exception("unexpected end of definition");
@@ -711,35 +831,22 @@ public static class MDSLDefinitionParser
         if (expected != null && expected.Length > 0)
         {
             // Manual check to avoid LINQ
-            bool found = false;
             for (int i = 0; i < expected.Length; i++)
             {
                 if (expected[i].Equals(popped, StringComparison.OrdinalIgnoreCase))
                 {
-                    found = true;
+                    foundIndex = i;
                     break;
                 }
             }
-            if (!found)
+
+            if (foundIndex < 0)
             {
                 throw new Exception($"unexpected token found. Expected {string.Join(" or ", expected)} but got '{popped}'");
             }
         }
 
         return popped;
-    }
-
-    private static void ValidatePoppedNode(NodeDefinition definition)
-    {
-        if (definition is DecoratorNodeDefinition decorator && decorator.Child == null)
-        {
-            throw new Exception($"a {definition.Type} node must have a single child node defined");
-        }
-
-        if (definition is CompositeNodeDefinition composite && (composite.Children == null || composite.Children.Count == 0))
-        {
-            throw new Exception($"a {definition.Type} node must have at least a single child node defined");
-        }
     }
 
     private class TokeniseResult
