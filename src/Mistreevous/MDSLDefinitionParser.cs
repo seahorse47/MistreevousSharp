@@ -587,6 +587,8 @@ public static class MDSLDefinitionParser
         return node;
     }
 
+    private static readonly string[] ArgumentStartTokens = { "[", "(" };
+
     private static List<ArgumentDefinition> ParseArgumentTokens(List<string> tokens, Dictionary<string, string> placeholders)
     {
         var argumentList = new List<ArgumentDefinition>();
@@ -596,7 +598,7 @@ public static class MDSLDefinitionParser
             return argumentList;
         }
 
-        var closingToken = PopAndCheck(tokens, new[] { "[", "(" }) == "[" ? "]" : ")";
+        var closingToken = PopAndCheck(tokens, ArgumentStartTokens) == "[" ? "]" : ")";
         var argumentListTokens = new List<string>();
 
         while (tokens.Count > 0 && tokens[0] != closingToken)
@@ -673,10 +675,27 @@ public static class MDSLDefinitionParser
 
     private static string PopAndCheck(List<string> tokens, string? expected = null)
     {
-        return PopAndCheck(tokens, expected != null ? new[] { expected } : null);
+        if (tokens.Count == 0)
+        {
+            throw new Exception("unexpected end of definition");
+        }
+
+        var popped = tokens[0];
+        tokens.RemoveAt(0);
+
+        if (expected != null)
+        {
+            bool found = expected.Equals(popped, StringComparison.OrdinalIgnoreCase);
+            if (!found)
+            {
+                throw new Exception($"unexpected token found. Expected {expected} but got '{popped}'");
+            }
+        }
+
+        return popped;
     }
 
-    private static string PopAndCheck(List<string> tokens, string[]? expected = null)
+    private static string PopAndCheck(List<string> tokens, string[]? expected)
     {
         if (tokens.Count == 0)
         {
