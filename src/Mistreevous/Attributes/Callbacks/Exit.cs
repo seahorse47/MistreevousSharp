@@ -47,7 +47,7 @@ public class Exit : Callback
         }
 
         // Create the exit function argument object.
-        var exitArg = new { succeeded = isSuccess, aborted = isAborted };
+        var exitArg = new ExitArg(isSuccess, isAborted);
 
         // Call the callback function with the exit argument.
         // Manual array concatenation to avoid LINQ allocations
@@ -59,5 +59,7 @@ public class Exit : Callback
         }
         callbackFuncInvoker(allArgs);
     }
+
+    public record ExitArg(bool Succeeded, bool Aborted);
 }
 
