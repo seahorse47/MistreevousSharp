@@ -65,8 +65,28 @@ public class Exit : Callback
     /// <summary>
     /// The type of first argument of exit callback.
     /// </summary>
-    /// <param name="Succeeded">Whether the node succeeded.</param>
-    /// <param name="Aborted">Whether the node was aborted.</param>
-    public record ExitArg(bool Succeeded, bool Aborted);
+    public class ExitArg
+    {
+        /// <summary>
+        /// Whether the node succeeded.
+        /// </summary>
+        public bool Succeeded { get; }
+
+        /// <summary>
+        /// Whether the node was aborted.
+        /// </summary>
+        public bool Aborted { get; }
+
+        /// <summary>
+        /// The constructor.
+        /// </summary>
+        /// <param name="succeeded">Whether the node succeeded.</param>
+        /// <param name="aborted">Whether the node was aborted.</param>
+        public ExitArg(bool succeeded, bool aborted)
+        {
+            this.Succeeded = succeeded;
+            this.Aborted = aborted;
+        }
+    }
 }
 
