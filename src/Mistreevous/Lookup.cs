@@ -48,34 +48,6 @@ public static class Lookup
     /// <returns>The function invoker for the specified agent and function name, or null if not found.</returns>
     public static Func<object?[], object?>? GetFuncInvoker(IAgent agent, string name)
     {
-        // Process any arguments that will be passed to an agent or registered function.
-        object?[] ProcessFunctionArguments(object?[] args)
-        {
-            // Manual conversion to avoid LINQ allocations
-            var processedArgs = new object?[args.Length];
-            for (int i = 0; i < args.Length; i++)
-            {
-                var arg = args[i];
-                // This argument may be an agent property reference. If it is we should substitute it for the value of the agent property it references.
-                // An agent property reference will be an object with a single "$" property with a string value representing the agent property name.
-                if (arg is Dictionary<string, object?> dict && dict.Count == 1 && dict.ContainsKey("$"))
-                {
-                    var agentPropertyName = dict["$"]?.ToString();
-                    if (string.IsNullOrEmpty(agentPropertyName))
-                    {
-                        throw new Exception("Agent property reference must be a string");
-                    }
-                    processedArgs[i] = agent[agentPropertyName];
-                }
-                else
-                {
-                    // The argument can be passed to the function as-is.
-                    processedArgs[i] = arg;
-                }
-            }
-            return processedArgs;
-        }
-
         // Check whether the agent contains the specified function using reflection.
         var agentType = agent.GetType();
         // First try exact match (case-sensitive)
@@ -97,21 +69,19 @@ public static class Lookup
         
         if (method != null)
         {
+            var parameters = method.GetParameters();
+            var methodArgs = new object?[parameters.Length];
+
             return (args) =>
             {
-                var processedArgs = ProcessFunctionArguments(args);
-                var parameters = method.GetParameters();
-                
                 // Convert arguments to match method parameters
-                var methodArgs = new object?[parameters.Length];
                 for (int i = 0; i < parameters.Length; i++)
                 {
                     var paramType = parameters[i].ParameterType;
-                    
-                    if (i < processedArgs.Length)
+                    if (i < args.Length)
                     {
                         // Try to convert the argument to the parameter type if needed
-                        var argValue = processedArgs[i];
+                        var argValue = args[i];
                         
                         if (argValue != null && !paramType.IsAssignableFrom(argValue.GetType()))
                         {
@@ -147,7 +117,7 @@ public static class Lookup
                         methodArgs[i] = null;
                     }
                 }
-                
+
                 // Invoke the method
                 var result = method.Invoke(agent, methodArgs);
                 return result;
@@ -158,13 +128,13 @@ public static class Lookup
         var agentProperty = agent[name];
         if (agentProperty is GlobalFunction agentFunction)
         {
-            return (args) => agentFunction(agent, ProcessFunctionArguments(args));
+            return (args) => agentFunction(agent, args);
         }
 
         // The agent does not contain the specified function but it may have been registered at some point.
         if (_registeredFunctions.TryGetValue(name, out var registeredFunction))
         {
-            return (args) => registeredFunction(agent, ProcessFunctionArguments(args));
+            return (args) => registeredFunction(agent, args);
         }
 
         // We have no function to invoke.

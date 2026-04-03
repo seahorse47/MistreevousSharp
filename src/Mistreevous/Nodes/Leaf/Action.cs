@@ -7,7 +7,7 @@ namespace Mistreevous;
 public class Action : Leaf
 {
     private readonly string _actionName;
-    private readonly object?[] _actionArguments;
+    private readonly Arguments _actionArguments;
     private bool _isUsingUpdatePromise = false;
     private Task<State>? _updatePromise;
     private State? _updatePromiseResult;
@@ -19,11 +19,11 @@ public class Action : Leaf
     /// <param name="options">The behaviour tree options.</param>
     /// <param name="actionName">The action name.</param>
     /// <param name="actionArguments">The array of action arguments.</param>
-    public Action(List<Attribute> attributes, BehaviourTreeOptions options, string actionName, object?[] actionArguments)
+    public Action(List<Attribute> attributes, BehaviourTreeOptions options, string actionName, NodeArgument[]? actionArguments)
         : base("action", attributes, options)
     {
         _actionName = actionName;
-        _actionArguments = actionArguments;
+        _actionArguments = new Arguments(actionArguments);
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ public class Action : Leaf
             // - The finished state of this action node.
             // - A Task to return a finished node state.
             // - Null if the node should remain in the running state.
-            actionFunctionResult = actionFuncInvoker(_actionArguments);
+            actionFunctionResult = actionFuncInvoker(_actionArguments.EvaluateArguments(agent));
         }
         catch (Exception error)
         {

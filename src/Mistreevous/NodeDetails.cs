@@ -26,9 +26,9 @@ public class NodeDetails
     public State State { get; set; }
 
     /// <summary>
-    /// The array of agent or globally registered function arguments, defined if this is an action or condition node.
+    /// The agent or globally registered function arguments, defined if this is an action or condition node.
     /// </summary>
-    public object?[]? Args { get; set; }
+    public Arguments? Args { get; set; }
 
     /// <summary>
     /// The 'while' guard attribute configured for this node.
@@ -74,7 +74,7 @@ public class GuardAttributeDetails
     /// <summary>
     /// Gets or sets the arguments to pass to the guard function.
     /// </summary>
-    public object?[]? Args { get; set; }
+    public Arguments? Args { get; set; }
     
     /// <summary>
     /// Gets or sets whether the node should succeed when aborted by this guard.
@@ -95,6 +95,6 @@ public class CallbackAttributeDetails
     /// <summary>
     /// Gets or sets the arguments to pass to the callback function.
     /// </summary>
-    public object?[]? Args { get; set; }
+    public Arguments? Args { get; set; }
 }
 

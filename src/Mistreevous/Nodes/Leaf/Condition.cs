@@ -7,7 +7,7 @@ namespace Mistreevous;
 public class Condition : Leaf
 {
     private readonly string _conditionName;
-    private readonly object?[] _conditionArguments;
+    private readonly Arguments _conditionArguments;
 
     /// <summary>
     /// Creates a new instance of the Condition class.
@@ -16,11 +16,11 @@ public class Condition : Leaf
     /// <param name="options">The behaviour tree options.</param>
     /// <param name="conditionName">The condition name.</param>
     /// <param name="conditionArguments">The array of condition arguments.</param>
-    public Condition(List<Attribute> attributes, BehaviourTreeOptions options, string conditionName, object?[] conditionArguments)
+    public Condition(List<Attribute> attributes, BehaviourTreeOptions options, string conditionName, NodeArgument[]? conditionArguments)
         : base("condition", attributes, options)
     {
         _conditionName = conditionName;
-        _conditionArguments = conditionArguments;
+        _conditionArguments = new Arguments(conditionArguments);
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public class Condition : Leaf
         try
         {
             // Call the condition function, the result of which should be a boolean.
-            conditionFunctionResult = conditionFuncInvoker(_conditionArguments);
+            conditionFunctionResult = conditionFuncInvoker(_conditionArguments.EvaluateArguments(agent));
         }
         catch (Exception error)
         {

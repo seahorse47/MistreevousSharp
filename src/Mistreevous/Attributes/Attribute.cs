@@ -11,19 +11,19 @@ public abstract class Attribute
     public string Type { get; }
 
     /// <summary>
-    /// The array of attribute arguments.
+    /// The attribute arguments.
     /// </summary>
-    public object?[] Args { get; }
+    public Arguments Args { get; }
 
     /// <summary>
     /// Creates a new instance of the Attribute class.
     /// </summary>
     /// <param name="type">The node attribute type.</param>
     /// <param name="args">The array of attribute arguments.</param>
-    protected Attribute(string type, object?[] args)
+    protected Attribute(string type, NodeArgument[]? args)
     {
         Type = type;
-        Args = args;
+        Args = new Arguments(args);
     }
 
     /// <summary>

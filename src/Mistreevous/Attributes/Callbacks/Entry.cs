@@ -10,7 +10,7 @@ public class Entry : Callback
     /// </summary>
     /// <param name="functionName">The name of the agent function to call.</param>
     /// <param name="args">The array of callback argument definitions.</param>
-    public Entry(string functionName, object?[] args)
+    public Entry(string functionName, NodeArgument[]? args)
         : base("entry", args, functionName)
     {
     }
@@ -47,7 +47,7 @@ public class Entry : Callback
         }
 
         // Call the callback function.
-        callbackFuncInvoker(Args);
+        callbackFuncInvoker(Args.EvaluateArguments(agent));
     }
 }
 

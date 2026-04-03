@@ -10,7 +10,7 @@ public class Step : Callback
     /// </summary>
     /// <param name="functionName">The name of the agent function to call.</param>
     /// <param name="args">The array of callback argument definitions.</param>
-    public Step(string functionName, object?[] args)
+    public Step(string functionName, NodeArgument[]? args)
         : base("step", args, functionName)
     {
     }
@@ -47,7 +47,7 @@ public class Step : Callback
         }
 
         // Call the callback function.
-        callbackFuncInvoker(Args);
+        callbackFuncInvoker(Args.EvaluateArguments(agent));
     }
 }
 

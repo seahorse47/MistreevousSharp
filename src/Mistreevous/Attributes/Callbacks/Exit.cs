@@ -5,14 +5,17 @@ namespace Mistreevous;
 /// </summary>
 public class Exit : Callback
 {
+    private readonly object?[] _allArgs;
+
     /// <summary>
     /// Creates a new instance of the Exit class.
     /// </summary>
     /// <param name="functionName">The name of the agent function to call.</param>
     /// <param name="args">The array of callback argument definitions.</param>
-    public Exit(string functionName, object?[] args)
+    public Exit(string functionName, NodeArgument[]? args)
         : base("exit", args, functionName)
     {
+        _allArgs = new object?[Args.Length + 1];
     }
 
     /// <summary>
@@ -48,16 +51,14 @@ public class Exit : Callback
 
         // Create the exit function argument object.
         var exitArg = new ExitArg(isSuccess, isAborted);
+        _allArgs[0] = exitArg;
+        if (_allArgs.Length > 1)
+        {
+            Array.Copy(Args.EvaluateArguments(agent), 0, _allArgs, 1, _allArgs.Length);
+        }
 
         // Call the callback function with the exit argument.
-        // Manual array concatenation to avoid LINQ allocations
-        var allArgs = new object?[Args.Length + 1];
-        allArgs[0] = exitArg;
-        for (int i = 0; i < Args.Length; i++)
-        {
-            allArgs[i + 1] = Args[i];
-        }
-        callbackFuncInvoker(allArgs);
+        callbackFuncInvoker(_allArgs);
     }
 
     /// <summary>

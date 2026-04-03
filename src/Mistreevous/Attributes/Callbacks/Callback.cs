@@ -16,7 +16,7 @@ public abstract class Callback : Attribute
     /// <param name="type">The node attribute type.</param>
     /// <param name="args">The array of decorator argument definitions.</param>
     /// <param name="functionName">The name of the agent function to call.</param>
-    protected Callback(string type, object?[] args, string functionName)
+    protected Callback(string type, NodeArgument[]? args, string functionName)
         : base(type, args)
     {
         FunctionName = functionName;

@@ -37,7 +37,7 @@ public class While : Guard
         try
         {
             // Call the guard condition function to determine the state of this node, the result of which should be a boolean.
-            conditionFunctionResult = conditionFuncInvoker(Args);
+            conditionFunctionResult = conditionFuncInvoker(Args.EvaluateArguments(agent));
         }
         catch (Exception error)
         {

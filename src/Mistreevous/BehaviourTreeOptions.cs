@@ -16,9 +16,9 @@ public class NodeStateChange
     public string Type { get; set; } = string.Empty;
 
     /// <summary>
-    /// The array of agent or globally registered function arguments if this is an action or condition node.
+    /// The agent or globally registered function arguments if this is an action or condition node.
     /// </summary>
-    public object?[]? Args { get; set; }
+    public Arguments? Args { get; set; }
 
     /// <summary>
     /// The 'while' guard attribute configured for this node.

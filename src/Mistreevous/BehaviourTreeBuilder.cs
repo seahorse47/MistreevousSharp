@@ -81,9 +81,9 @@ public static class BehaviourTreeBuilder
             case "lotto":
                 return CreateLottoNode(attributes, options, (LottoNodeDefinition)definition, rootNodeDefinitionMap);
             case "action":
-                return new Action(attributes, options, ((ActionNodeDefinition)definition).Call, ConvertArguments(((ActionNodeDefinition)definition).Args));
+                return new Action(attributes, options, ((ActionNodeDefinition)definition).Call, ((ActionNodeDefinition)definition).Args);
             case "condition":
-                return new Condition(attributes, options, ((ConditionNodeDefinition)definition).Call, ConvertArguments(((ConditionNodeDefinition)definition).Args));
+                return new Condition(attributes, options, ((ConditionNodeDefinition)definition).Call, ((ConditionNodeDefinition)definition).Args);
             case "wait":
                 return CreateWaitNode(attributes, options, (WaitNodeDefinition)definition);
             case "repeat":
@@ -440,30 +440,6 @@ public static class BehaviourTreeBuilder
         }
     }
 
-    private static object?[] ConvertArguments(NodeArgument[]? args)
-    {
-        if (args == null || args.Length == 0)
-        {
-            return Array.Empty<object?>();
-        }
-
-        // Manual conversion to avoid LINQ allocations
-        var result = new object?[args.Length];
-        for (int i = 0; i < args.Length; i++)
-        {
-            var arg = args[i];
-            if (arg.IsAgentProperty)
-            {
-                result[i] = new Dictionary<string, object?> { { "$", arg.AgentProperty } };
-            }
-            else
-            {
-                result[i] = arg.Value;
-            }
-        }
-        return result;
-    }
-
     private static List<Attribute> CreateNodeAttributes(NodeDefinition definition)
     {
         var attributes = new List<Attribute>();
@@ -480,17 +456,17 @@ public static class BehaviourTreeBuilder
 
         if (definition.Entry != null)
         {
-            attributes.Add(new Entry(definition.Entry.Call, ConvertArguments(definition.Entry.Args)));
+            attributes.Add(new Entry(definition.Entry.Call, definition.Entry.Args));
         }
 
         if (definition.Step != null)
         {
-            attributes.Add(new Step(definition.Step.Call, ConvertArguments(definition.Step.Args)));
+            attributes.Add(new Step(definition.Step.Call, definition.Step.Args));
         }
 
         if (definition.Exit != null)
         {
-            attributes.Add(new Exit(definition.Exit.Call, ConvertArguments(definition.Exit.Args)));
+            attributes.Add(new Exit(definition.Exit.Call, definition.Exit.Args));
         }
 
         return attributes;

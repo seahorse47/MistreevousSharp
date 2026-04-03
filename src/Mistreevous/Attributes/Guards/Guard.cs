@@ -16,25 +16,9 @@ public abstract class Guard : Attribute
     /// <param name="type">The node attribute type.</param>
     /// <param name="definition">The node guard definition.</param>
     protected Guard(string type, NodeGuardDefinition definition)
-        : base(type, ConvertGuardArguments(definition.Args))
+        : base(type, definition.Args)
     {
         Definition = definition;
-    }
-
-    private static object?[] ConvertGuardArguments(NodeArgument[]? args)
-    {
-        if (args == null || args.Length == 0)
-        {
-            return Array.Empty<object?>();
-        }
-
-        // Manual conversion to avoid LINQ allocations
-        var result = new object?[args.Length];
-        for (int i = 0; i < args.Length; i++)
-        {
-            result[i] = args[i].IsAgentProperty ? (object?)args[i].AgentProperty : args[i].Value;
-        }
-        return result;
     }
 
     /// <summary>
