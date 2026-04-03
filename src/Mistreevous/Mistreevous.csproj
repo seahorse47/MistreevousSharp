@@ -12,7 +12,7 @@
   <PropertyGroup>
     <IsPackable>True</IsPackable>
     <PackageId>MistreevousSharp</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>1.1.0</PackageVersion>
     <Description>A lightweight C# behaviour-tree library inspired by Mistreevous: define complex AI behaviors using a minimal DSL or JSON, with composite, decorator, waiter, lotto, and guard nodes, plus async actions, state callbacks and global subtree registration.</Description>
     <PackageTags>BehaviorTree AI BehaviorTree C# BT DSL Composite Decorator Action Condition Async Guard Random Tree</PackageTags>
     <Authors>Diego Teles, nikkorn</Authors>
