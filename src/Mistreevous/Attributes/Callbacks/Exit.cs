@@ -60,6 +60,11 @@ public class Exit : Callback
         callbackFuncInvoker(allArgs);
     }
 
+    /// <summary>
+    /// The type of first argument of exit callback.
+    /// </summary>
+    /// <param name="Succeeded">Whether the node succeeded.</param>
+    /// <param name="Aborted">Whether the node was aborted.</param>
     public record ExitArg(bool Succeeded, bool Aborted);
 }
 
