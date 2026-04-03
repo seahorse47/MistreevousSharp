@@ -77,12 +77,12 @@ public class BehaviourTreeOptions
     public Func<double>? Random { get; set; }
 
     /// <summary>
-    /// Gets/sets custom instance for looking up functions and registered subtrees.
+    /// Gets/sets custom instance for looking up agent functions.
     /// </summary>
     public ILookup? CustomLookup { get; set; }
 
     /// <summary>
-    /// Gets the instance for looking up functions and registered subtrees.
+    /// Gets the instance for looking up agent functions.
     /// It returns the custom instance defined by `BehaviourTreeOptions.CustomLookup` property if it's not null.
     /// Otherwise the default instance (`Lookup.Default`) will be returned.
     /// </summary>

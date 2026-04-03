@@ -4,7 +4,7 @@ using System.Reflection;
 namespace Mistreevous;
 
 /// <summary>
-/// An interface for looking up functions and registered subtrees.
+/// An interface for looking up agent functions.
 /// </summary>
 public interface ILookup
 {
@@ -15,13 +15,6 @@ public interface ILookup
     /// <param name="name">The function name.</param>
     /// <returns>The function invoker for the specified agent, or null if not found.</returns>
     Func<object?[], object?>? GetFuncInvoker(IAgent agent, string name);
-
-    /// <summary>
-    /// Gets the registered subtree root node definition with the specified name.
-    /// </summary>
-    /// <param name="name">The name of the subtree.</param>
-    /// <returns>The root node definition for the specified name, or null if not found.</returns>
-    RootNodeDefinition? GetSubtree(string name);
 }
 
 /// <summary>
@@ -169,11 +162,11 @@ public class Lookup : ILookup
     }
 
     /// <summary>
-    /// Gets registered subtree root node definition with the specified name.
+    /// Gets all registered subtree root node definitions.
     /// </summary>
-    public RootNodeDefinition? GetSubtree(string name)
+    public IReadOnlyDictionary<string, RootNodeDefinition> GetSubtrees()
     {
-        return _registeredSubtrees.TryGetValue(name, out var result) ? result : null;
+        return _registeredSubtrees;
     }
 
     /// <summary>

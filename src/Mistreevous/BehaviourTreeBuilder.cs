@@ -8,12 +8,12 @@ namespace Mistreevous;
 public interface IRootNodeDefinitionMap
 {
     /// <summary>
-    /// Attempt to get the definition that has the specified key.
+    /// Attempt to get the definition that has the specified name.
     /// </summary>
-    /// <param name="key"></param>
+    /// <param name="name"></param>
     /// <param name="value"></param>
     /// <returns>`true` if the definition exists</returns>
-    bool TryGetValue(string key, out RootNodeDefinition? value);
+    bool TryGetDefinition(string name, out RootNodeDefinition? value);
 }
 
 /// <summary>
@@ -32,7 +32,7 @@ public static class BehaviourTreeBuilder
     public static Root BuildRootNode(IReadOnlyList<RootNodeDefinition> definition, BehaviourTreeOptions options)
     {
         // Create a mapping of root node identifiers to root node definitions, including globally registered subtree root node definitions.
-        var (mainDefinition, rootNodeDefinitionMap) = FindMainDefinitionAndCreateDefinitionMap(definition, options.Lookup);
+        var (mainDefinition, rootNodeDefinitionMap) = FindMainDefinitionAndCreateDefinitionMap(definition);
         return BuildRootNode(mainDefinition, options, rootNodeDefinitionMap);
     }
 
@@ -472,9 +472,20 @@ public static class BehaviourTreeBuilder
         return attributes;
     }
 
-    private static (RootNodeDefinition, IRootNodeDefinitionMap) FindMainDefinitionAndCreateDefinitionMap(IReadOnlyList<RootNodeDefinition> definition, ILookup lookup)
+    private static (RootNodeDefinition, IRootNodeDefinitionMap) FindMainDefinitionAndCreateDefinitionMap(IReadOnlyList<RootNodeDefinition> definition)
     {
-        var rootNodeMap = new SimpleRootNodeDefinitionMap(lookup);
+        var rootNodeMap = new SimpleRootNodeDefinitionMap();
+
+        // Add in any registered subtree root node definitions.
+        foreach (var (name, rootNodeDefinition) in Lookup.Default.GetSubtrees())
+        {
+            rootNodeMap[name] = new RootNodeDefinition
+            {
+                Type = rootNodeDefinition.Type,
+                Id = name,
+                Child = rootNodeDefinition.Child
+            };
+        }
 
         RootNodeDefinition mainDefinition = definition[0];
         // Populate the map with the root node definitions that were included with the tree definition.
@@ -486,7 +497,7 @@ public static class BehaviourTreeBuilder
             }
             else
             {
-                rootNodeMap.Register(rootNodeDefinition.Id, rootNodeDefinition);
+                rootNodeMap[rootNodeDefinition.Id] = rootNodeDefinition;
             }
         }
 
@@ -495,7 +506,7 @@ public static class BehaviourTreeBuilder
 
     private static RootNodeDefinition ResolveReferencedNode(IRootNodeDefinitionMap rootNodeDefinitionMap, string key)
     {
-        if (!rootNodeDefinitionMap.TryGetValue(key, out var referencedNodeDefinition))
+        if (!rootNodeDefinitionMap.TryGetDefinition(key, out var referencedNodeDefinition))
         {
             throw new Exception($"referenced node not found for key: {key}");
         }
@@ -572,31 +583,11 @@ public static class BehaviourTreeBuilder
         }
     }
 
-    private class SimpleRootNodeDefinitionMap : IRootNodeDefinitionMap
+    private class SimpleRootNodeDefinitionMap : Dictionary<string, RootNodeDefinition>, IRootNodeDefinitionMap
     {
-        private ILookup? _lookup;
-        private readonly Dictionary<string, RootNodeDefinition> _map;
-
-        public SimpleRootNodeDefinitionMap(ILookup? lookup)
+        public bool TryGetDefinition(string name, out RootNodeDefinition? value)
         {
-            _lookup = lookup;
-            _map = new Dictionary<string, RootNodeDefinition>();
-        }
-
-        public void Register(string key, RootNodeDefinition definition)
-        {
-            _map[key] = definition;
-        }
-
-        public bool TryGetValue(string key, out RootNodeDefinition? value)
-        {
-            if (_map.TryGetValue(key, out value))
-            {
-                return true;
-            }
-
-            value = _lookup?.GetSubtree(key);
-            return value != null;
+            return TryGetValue(name, out value);
         }
     }
 }
