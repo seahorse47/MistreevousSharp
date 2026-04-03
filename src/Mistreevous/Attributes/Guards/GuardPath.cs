@@ -35,8 +35,9 @@ public class GuardPath
     /// <summary>
     /// Evaluate guard conditions for all guards in the tree path, moving outwards from the root.
     /// </summary>
+    /// <param name="lookup">The lookup instance.</param>
     /// <param name="agent">The agent, required for guard evaluation.</param>
-    public void Evaluate(IAgent agent)
+    public void Evaluate(ILookup lookup, IAgent agent)
     {
         // We need to evaluate guard conditions for nodes up the tree, moving outwards from the root.
         foreach (var details in _nodes)
@@ -45,7 +46,7 @@ public class GuardPath
             foreach (var guard in details.Guards)
             {
                 // Check whether the guard condition passes, and throw an exception if not.
-                if (!guard.IsSatisfied(agent))
+                if (!guard.IsSatisfied(lookup, agent))
                 {
                     throw new GuardUnsatisfiedException(details.Node, guard);
                 }

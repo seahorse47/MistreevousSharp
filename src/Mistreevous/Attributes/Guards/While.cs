@@ -17,12 +17,13 @@ public class While : Guard
     /// <summary>
     /// Gets whether the guard is satisfied.
     /// </summary>
+    /// <param name="lookup">The lookup instance.</param>
     /// <param name="agent">The agent.</param>
     /// <returns>Whether the guard is satisfied.</returns>
-    public override bool IsSatisfied(IAgent agent)
+    public override bool IsSatisfied(ILookup lookup, IAgent agent)
     {
         // Attempt to get the invoker for the condition function.
-        var conditionFuncInvoker = Lookup.GetFuncInvoker(agent, Condition);
+        var conditionFuncInvoker = lookup.GetFuncInvoker(agent, Condition);
 
         // The condition function should be defined.
         if (conditionFuncInvoker == null)

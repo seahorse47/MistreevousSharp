@@ -180,7 +180,7 @@ public abstract class Node
         // Reset the state of this node.
         Reset();
 
-        Attributes.Exit?.CallAgentFunction(agent, false, true);
+        Attributes.Exit?.CallAgentFunction(Options.Lookup, agent, false, true);
     }
 
     /// <summary>
@@ -198,15 +198,15 @@ public abstract class Node
         try
         {
             // Evaluate all of the guard path conditions for the current tree path.
-            _guardPath?.Evaluate(agent);
+            _guardPath?.Evaluate(Options.Lookup, agent);
 
             // If this node is in the READY state then call the ENTRY for this node if it exists.
             if (Is(State.Ready))
             {
-                Attributes.Entry?.CallAgentFunction(agent);
+                Attributes.Entry?.CallAgentFunction(Options.Lookup, agent);
             }
 
-            Attributes.Step?.CallAgentFunction(agent);
+            Attributes.Step?.CallAgentFunction(Options.Lookup, agent);
 
             // Do the actual update.
             OnUpdate(agent);
@@ -214,7 +214,7 @@ public abstract class Node
             // If this node is now in a 'SUCCEEDED' or 'FAILED' state then call the EXIT for this node if it exists.
             if (Is(State.Succeeded) || Is(State.Failed))
             {
-                Attributes.Exit?.CallAgentFunction(agent, Is(State.Succeeded), false);
+                Attributes.Exit?.CallAgentFunction(Options.Lookup, agent, Is(State.Succeeded), false);
             }
         }
         catch (GuardUnsatisfiedException error)

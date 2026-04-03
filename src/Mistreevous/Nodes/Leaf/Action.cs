@@ -63,7 +63,7 @@ public class Action : Leaf
         }
 
         // Attempt to get the invoker for the action function.
-        var actionFuncInvoker = Lookup.GetFuncInvoker(agent, _actionName);
+        var actionFuncInvoker = Options.Lookup.GetFuncInvoker(agent, _actionName);
 
         // The action function should be defined.
         if (actionFuncInvoker == null)

@@ -77,6 +77,18 @@ public class BehaviourTreeOptions
     public Func<double>? Random { get; set; }
 
     /// <summary>
+    /// Gets/sets custom instance for looking up functions and registered subtrees.
+    /// </summary>
+    public ILookup? CustomLookup { get; set; }
+
+    /// <summary>
+    /// Gets the instance for looking up functions and registered subtrees.
+    /// It returns the custom instance defined by `BehaviourTreeOptions.CustomLookup` property if it's not null.
+    /// Otherwise the default instance (`Lookup.Default`) will be returned.
+    /// </summary>
+    public ILookup Lookup { get => CustomLookup ?? Mistreevous.Lookup.Default; }
+
+    /// <summary>
     /// An event handler that is called whenever the state of a node changes.
     /// </summary>
     public Action<NodeStateChange>? OnNodeStateChange { get; set; }

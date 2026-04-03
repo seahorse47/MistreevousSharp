@@ -30,7 +30,7 @@ public class Condition : Leaf
     protected override void OnUpdate(IAgent agent)
     {
         // Attempt to get the invoker for the condition function.
-        var conditionFuncInvoker = Lookup.GetFuncInvoker(agent, _conditionName);
+        var conditionFuncInvoker = Options.Lookup.GetFuncInvoker(agent, _conditionName);
 
         // The condition function should be defined.
         if (conditionFuncInvoker == null)

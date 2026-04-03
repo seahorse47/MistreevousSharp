@@ -58,7 +58,7 @@ public abstract class Decorator : Node
         // Reset the state of this node.
         Reset();
 
-        Attributes.Exit?.CallAgentFunction(agent, false, true);
+        Attributes.Exit?.CallAgentFunction(Options.Lookup, agent, false, true);
     }
 
     /// <summary>

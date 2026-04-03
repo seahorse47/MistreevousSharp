@@ -207,7 +207,7 @@ public class BehaviourTree
         // Are we going to register a action/condition/guard/callback function?
         if (value is GlobalFunction globalFunction)
         {
-            Lookup.SetFunc(name, globalFunction);
+            Lookup.Default.SetFunc(name, globalFunction);
             return;
         }
 
@@ -248,7 +248,7 @@ public class BehaviourTree
             }
 
             // Everything seems hunky-dory, register the subtree.
-            Lookup.SetSubtree(name, rootNodeDefinitions[0]);
+            Lookup.Default.SetSubtree(name, rootNodeDefinitions[0]);
         }
         else if (value is RootNodeDefinition rootNodeDefinition)
         {
@@ -271,7 +271,7 @@ public class BehaviourTree
             }
 
             // Everything seems hunky-dory, register the subtree.
-            Lookup.SetSubtree(name, rootNodeDefinition);
+            Lookup.Default.SetSubtree(name, rootNodeDefinition);
         }
         else
         {
@@ -285,7 +285,7 @@ public class BehaviourTree
     /// <param name="name">The name of the registered action/condition/guard/callback function or subtree to unregister.</param>
     public static void Unregister(string name)
     {
-        Lookup.Remove(name);
+        Lookup.Default.Remove(name);
     }
 
     /// <summary>
@@ -293,7 +293,7 @@ public class BehaviourTree
     /// </summary>
     public static void UnregisterAll()
     {
-        Lookup.Empty();
+        Lookup.Default.Empty();
     }
 
     /// <summary>

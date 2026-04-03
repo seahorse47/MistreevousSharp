@@ -25,9 +25,10 @@ public abstract class Callback : Attribute
     /// <summary>
     /// Attempt to call the agent function that this callback refers to.
     /// </summary>
+    /// <param name="lookup">The lookup instance.</param>
     /// <param name="agent">The agent.</param>
     /// <param name="isSuccess">Whether the node succeeded.</param>
     /// <param name="isAborted">Whether the node was aborted.</param>
-    public abstract void CallAgentFunction(IAgent agent, bool isSuccess = false, bool isAborted = false);
+    public abstract void CallAgentFunction(ILookup lookup, IAgent agent, bool isSuccess = false, bool isAborted = false);
 }
 

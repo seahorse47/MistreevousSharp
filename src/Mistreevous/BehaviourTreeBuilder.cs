@@ -32,7 +32,7 @@ public static class BehaviourTreeBuilder
     public static Root BuildRootNode(IReadOnlyList<RootNodeDefinition> definition, BehaviourTreeOptions options)
     {
         // Create a mapping of root node identifiers to root node definitions, including globally registered subtree root node definitions.
-        var (mainDefinition, rootNodeDefinitionMap) = FindMainDefinitionAndCreateDefinitionMap(definition);
+        var (mainDefinition, rootNodeDefinitionMap) = FindMainDefinitionAndCreateDefinitionMap(definition, options.Lookup);
         return BuildRootNode(mainDefinition, options, rootNodeDefinitionMap);
     }
 
@@ -472,20 +472,9 @@ public static class BehaviourTreeBuilder
         return attributes;
     }
 
-    private static (RootNodeDefinition, IRootNodeDefinitionMap) FindMainDefinitionAndCreateDefinitionMap(IReadOnlyList<RootNodeDefinition> definition)
+    private static (RootNodeDefinition, IRootNodeDefinitionMap) FindMainDefinitionAndCreateDefinitionMap(IReadOnlyList<RootNodeDefinition> definition, ILookup lookup)
     {
-        var rootNodeMap = new SimpleRootNodeDefinitionMap();
-
-        // Add in any registered subtree root node definitions.
-        foreach (var (name, rootNodeDefinition) in Lookup.GetSubtrees())
-        {
-            rootNodeMap[name] = new RootNodeDefinition
-            {
-                Type = rootNodeDefinition.Type,
-                Id = name,
-                Child = rootNodeDefinition.Child
-            };
-        }
+        var rootNodeMap = new SimpleRootNodeDefinitionMap(lookup);
 
         RootNodeDefinition mainDefinition = definition[0];
         // Populate the map with the root node definitions that were included with the tree definition.
@@ -497,7 +486,7 @@ public static class BehaviourTreeBuilder
             }
             else
             {
-                rootNodeMap[rootNodeDefinition.Id] = rootNodeDefinition;
+                rootNodeMap.Register(rootNodeDefinition.Id, rootNodeDefinition);
             }
         }
 
@@ -583,7 +572,31 @@ public static class BehaviourTreeBuilder
         }
     }
 
-    private class SimpleRootNodeDefinitionMap : Dictionary<string, RootNodeDefinition>, IRootNodeDefinitionMap
+    private class SimpleRootNodeDefinitionMap : IRootNodeDefinitionMap
     {
+        private ILookup? _lookup;
+        private readonly Dictionary<string, RootNodeDefinition> _map;
+
+        public SimpleRootNodeDefinitionMap(ILookup? lookup)
+        {
+            _lookup = lookup;
+            _map = new Dictionary<string, RootNodeDefinition>();
+        }
+
+        public void Register(string key, RootNodeDefinition definition)
+        {
+            _map[key] = definition;
+        }
+
+        public bool TryGetValue(string key, out RootNodeDefinition? value)
+        {
+            if (_map.TryGetValue(key, out value))
+            {
+                return true;
+            }
+
+            value = _lookup?.GetSubtree(key);
+            return value != null;
+        }
     }
 }

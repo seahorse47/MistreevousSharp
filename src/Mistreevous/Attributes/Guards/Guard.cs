@@ -47,8 +47,9 @@ public abstract class Guard : Attribute
     /// <summary>
     /// Gets whether the guard is satisfied.
     /// </summary>
+    /// <param name="lookup">The lookup instance.</param>
     /// <param name="agent">The agent.</param>
     /// <returns>Whether the guard is satisfied.</returns>
-    public abstract bool IsSatisfied(IAgent agent);
+    public abstract bool IsSatisfied(ILookup lookup, IAgent agent);
 }
 

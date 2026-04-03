@@ -64,7 +64,7 @@ public abstract class Composite : Node
         // Reset the state of this node.
         Reset();
 
-        Attributes.Exit?.CallAgentFunction(agent, false, true);
+        Attributes.Exit?.CallAgentFunction(Options.Lookup, agent, false, true);
     }
 
     /// <summary>

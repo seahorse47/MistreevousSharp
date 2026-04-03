@@ -4,26 +4,53 @@ using System.Reflection;
 namespace Mistreevous;
 
 /// <summary>
-/// A singleton used to store and lookup registered functions and subtrees.
+/// An interface for looking up functions and registered subtrees.
 /// </summary>
-public static class Lookup
+public interface ILookup
 {
+    /// <summary>
+    /// Gets the function invoker for the specified agent.
+    /// </summary>
+    /// <param name="agent">The agent instance that this behaviour tree is modelling behaviour for.</param>
+    /// <param name="name">The function name.</param>
+    /// <returns>The function invoker for the specified agent, or null if not found.</returns>
+    Func<object?[], object?>? GetFuncInvoker(IAgent agent, string name);
+
+    /// <summary>
+    /// Gets the registered subtree root node definition with the specified name.
+    /// </summary>
+    /// <param name="name">The name of the subtree.</param>
+    /// <returns>The root node definition for the specified name, or null if not found.</returns>
+    RootNodeDefinition? GetSubtree(string name);
+}
+
+/// <summary>
+/// Default implementation of `ILookup` interface.
+/// </summary>
+public class Lookup : ILookup
+{
+    /// <summary>
+    /// The default lookup instance.
+    /// It's used to store functions and subtrees registered through relevant methods of `BehaviourTree`.
+    /// </summary>
+    public static readonly Lookup Default = new Lookup();
+
     /// <summary>
     /// The dictionary holding any registered functions keyed on function name.
     /// </summary>
-    private static readonly Dictionary<string, GlobalFunction> _registeredFunctions = new();
+    private readonly Dictionary<string, GlobalFunction> _registeredFunctions = new();
 
     /// <summary>
     /// The dictionary holding any registered subtree root node definitions keyed on tree name.
     /// </summary>
-    private static readonly Dictionary<string, RootNodeDefinition> _registeredSubtrees = new();
+    private readonly Dictionary<string, RootNodeDefinition> _registeredSubtrees = new();
 
     /// <summary>
     /// Gets the function with the specified name.
     /// </summary>
     /// <param name="name">The name of the function.</param>
     /// <returns>The function with the specified name, or null if not found.</returns>
-    public static GlobalFunction? GetFunc(string name)
+    public GlobalFunction? GetFunc(string name)
     {
         return _registeredFunctions.TryGetValue(name, out var func) ? func : null;
     }
@@ -33,7 +60,7 @@ public static class Lookup
     /// </summary>
     /// <param name="name">The name of the function.</param>
     /// <param name="func">The function.</param>
-    public static void SetFunc(string name, GlobalFunction func)
+    public void SetFunc(string name, GlobalFunction func)
     {
         _registeredFunctions[name] = func;
     }
@@ -46,7 +73,7 @@ public static class Lookup
     /// <param name="agent">The agent instance that this behaviour tree is modelling behaviour for.</param>
     /// <param name="name">The function name.</param>
     /// <returns>The function invoker for the specified agent and function name, or null if not found.</returns>
-    public static Func<object?[], object?>? GetFuncInvoker(IAgent agent, string name)
+    public Func<object?[], object?>? GetFuncInvoker(IAgent agent, string name)
     {
         // Check whether the agent contains the specified function using reflection.
         var agentType = agent.GetType();
@@ -142,11 +169,11 @@ public static class Lookup
     }
 
     /// <summary>
-    /// Gets all registered subtree root node definitions.
+    /// Gets registered subtree root node definition with the specified name.
     /// </summary>
-    public static IReadOnlyDictionary<string, RootNodeDefinition> GetSubtrees()
+    public RootNodeDefinition? GetSubtree(string name)
     {
-        return _registeredSubtrees;
+        return _registeredSubtrees.TryGetValue(name, out var result) ? result : null;
     }
 
     /// <summary>
@@ -154,7 +181,7 @@ public static class Lookup
     /// </summary>
     /// <param name="name">The name of the subtree.</param>
     /// <param name="subtree">The subtree.</param>
-    public static void SetSubtree(string name, RootNodeDefinition subtree)
+    public void SetSubtree(string name, RootNodeDefinition subtree)
     {
         _registeredSubtrees[name] = subtree;
     }
@@ -163,7 +190,7 @@ public static class Lookup
     /// Removes the registered function or subtree with the specified name.
     /// </summary>
     /// <param name="name">The name of the registered function or subtree.</param>
-    public static void Remove(string name)
+    public void Remove(string name)
     {
         _registeredFunctions.Remove(name);
         _registeredSubtrees.Remove(name);
@@ -172,7 +199,7 @@ public static class Lookup
     /// <summary>
     /// Remove all registered functions and subtrees.
     /// </summary>
-    public static void Empty()
+    public void Empty()
     {
         _registeredFunctions.Clear();
         _registeredSubtrees.Clear();
